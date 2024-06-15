@@ -16,18 +16,18 @@ Vitorm.ElasticSearch: an simple orm for ElasticSearch
 
 
 # Examples:  
-- [CRUD](test/Vitorm.Sqlite.MsTest/CommonTest/CRUD_Test.cs)    
-- [ToExecuteString](test/Vitorm.Sqlite.MsTest/CommonTest/Orm_Extensions_ToExecuteString_Test.cs)    
+- [CRUD](test/Vitorm.ElasticSearch.MsTest/CommonTest/CRUD_Test.cs)    
+- [ToExecuteString](test/Vitorm.ElasticSearch.MsTest/CommonTest/Orm_Extensions_ToExecuteString_Test.cs)    
     
-- [Query_LinqMethods](test/Vitorm.Sqlite.MsTest/CommonTest/Query_LinqMethods_Test.cs)  
+- [Query_LinqMethods](test/Vitorm.ElasticSearch.MsTest/CommonTest/Query_LinqMethods_Test.cs)  
     
-- [Query_String](test/Vitorm.Sqlite.MsTest/CommonTest/Query_Type_String_Test.cs)  
-- [Query_String_Like](test/Vitorm.Sqlite.MsTest/CommonTest/Query_Type_String_Like_Test.cs)  
+- [Query_String](test/Vitorm.ElasticSearch.MsTest/CommonTest/Query_Type_String_Test.cs)  
+- [Query_String_Like](test/Vitorm.ElasticSearch.MsTest/CommonTest/Query_Type_String_Like_Test.cs)  
     
-- [Query_Numric](test/Vitorm.Sqlite.MsTest/CommonTest/Query_Type_Numric_Test.cs)  
+- [Query_Numric](test/Vitorm.ElasticSearch.MsTest/CommonTest/Query_Type_Numric_Test.cs)  
     
 - [Save](test/Vitorm.MySql.MsTest/CustomTest/CRUD_Save_Test.cs)  
-- [Query_NestedField](test/Vitorm.SqlServer.MsTest/CustomTest/Query_NestedField_Test.cs)  
+- [Query_NestedField](test/Vitorm.ElasticSearch.MsTest/CustomTest/Query_NestedField_Test.cs)  
 
 
 
