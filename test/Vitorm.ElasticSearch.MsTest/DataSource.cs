@@ -47,12 +47,12 @@ namespace Vitorm.MsTest
             //dbContext.GetEntityIndex=(_)=> dbIndexName;
 
             var users = new List<User> {
-                    new User { key="1",id=1, name="u1", fatherId=4, motherId=6 },
-                    new User { key="2",id=2, name="u2", fatherId=4, motherId=6 },
-                    new User { key="3",id=3, name="u3", fatherId=5, motherId=6 },
-                    new User { key="4",id=4, name="u4" },
-                    new User { key="5",id=5, name="u5" },
-                    new User { key="6",id=6, name="u6" },
+                    new User { key="1",id=1, name="u146", fatherId=4, motherId=6 },
+                    new User { key="2",id=2, name="u246", fatherId=4, motherId=6 },
+                    new User { key="3",id=3, name="u356", fatherId=5, motherId=6 },
+                    new User { key="4",id=4, name="u400" },
+                    new User { key="5",id=5, name="u500" },
+                    new User { key="6",id=6, name="u600" },
                 };
 
             users.ForEach(user => { user.birth = DateTime.Parse("2021-01-01 00:00:00").AddHours(user.id); });
@@ -65,15 +65,15 @@ namespace Vitorm.MsTest
 
             lock (typeof(DataSource))
             {
-                if (!initedDefaultIndex)
-                {
-                    dbContext.Drop<User>();
-                    dbContext.Create<User>();
-                    dbContext.AddRange(users);
+                //if (!initedDefaultIndex)
+                //{
+                //    dbContext.Drop<User>();
+                //    dbContext.Create<User>();
+                //    dbContext.AddRange(users);
 
-                    Thread.Sleep(2000);
-                    initedDefaultIndex = true;
-                }
+                //    Thread.Sleep(2000);
+                //    initedDefaultIndex = true;
+                //}
             }
       
             return dbContext;

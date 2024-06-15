@@ -13,6 +13,7 @@ using Vitorm.Entity;
 using Vit.Extensions;
 using System.Net;
 using System.Collections;
+using Vit.Extensions.Vitorm_Extensions;
 
 namespace Vitorm.ElasticSearch
 {
@@ -263,6 +264,13 @@ namespace Vitorm.ElasticSearch
 
 
                 var queryPayload = BuildElasticQueryPayload(combinedStream);
+
+
+                if (combinedStream.method == nameof(Orm_Extensions.ToExecuteString)) 
+                {
+                    return Serialize(queryPayload);
+                }
+
                 var searchResult = Query<Entity>(queryPayload, indexName);
 
 
@@ -273,7 +281,7 @@ namespace Vitorm.ElasticSearch
                 var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(entityDescriptor));
 
                 Delegate select = null;
-                if (combinedStream.select?.isDefaultSelect == false)
+                if (combinedStream.select?.fields != null)
                 {
                     select = BuildSelect(source.GetEntityType(), combinedStream.select.fields, source.alias);
                 }

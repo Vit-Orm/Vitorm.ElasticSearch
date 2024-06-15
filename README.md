@@ -2,29 +2,18 @@
 # Vitorm.ElasticSearch
 
 
-TOOD:
 
-
-# select NodeType.Convert
-select(m=> (int)m.id)
-
-
-
-# Test_ExecuteDelete
-
-# Query Cache seconds = 0;
 
 ----------------------
-# ExecuteUpdate
+
+# TOOD
 
 
-# ES api
- - delete-by-query
- - update
- - update by query
- - multi get
+ - support store DateTime and query with time
+ - Test_ExecuteDelete  (ES api : delete-by-query)
+ - Query Cache seconds = 0;
+ - ExecuteUpdate (ES api : update by query)
 
-
-
+ 
 
 
