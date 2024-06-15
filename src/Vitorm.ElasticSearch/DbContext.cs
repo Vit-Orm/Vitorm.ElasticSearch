@@ -142,15 +142,15 @@ namespace Vitorm.ElasticSearch
 
 
         #region #1.2 Create :  AddRange
-        public override void AddRange<Entity>(IEnumerable<Entity> entitys)
+        public override void AddRange<Entity>(IEnumerable<Entity> entities)
         {
             var indexName = GetIndex<Entity>();
-            AddRange(entitys, indexName);
+            AddRange(entities, indexName);
         }
-        public void AddRange<Entity>(IEnumerable<Entity> entitys, string indexName)
+        public void AddRange<Entity>(IEnumerable<Entity> entities, string indexName)
         {
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
-            var bulkResult = Bulk(entityDescriptor, entitys, indexName, "create");
+            var bulkResult = Bulk(entityDescriptor, entities, indexName, "create");
 
             if (bulkResult.errors == true)
             {
@@ -159,10 +159,10 @@ namespace Vitorm.ElasticSearch
             }
 
             var items = bulkResult?.items;
-            if (items?.Length == entitys.Count())
+            if (items?.Length == entities.Count())
             {
                 var t = 0;
-                foreach (var entity in entitys)
+                foreach (var entity in entities)
                 {
                     var id = items[t].result?._id;
                     if (id != null) entityDescriptor.key?.SetValue(entity, id);
@@ -566,19 +566,19 @@ namespace Vitorm.ElasticSearch
         }
 
 
-        public override int UpdateRange<Entity>(IEnumerable<Entity> entitys)
+        public override int UpdateRange<Entity>(IEnumerable<Entity> entities)
         {
             var indexName = GetIndex<Entity>();
-            return UpdateRange<Entity>(entitys, indexName);
+            return UpdateRange<Entity>(entities, indexName);
         }
 
-        public virtual int UpdateRange<Entity>(IEnumerable<Entity> entitys, string indexName)
+        public virtual int UpdateRange<Entity>(IEnumerable<Entity> entities, string indexName)
         {
             var key = GetEntityDescriptor(typeof(Entity)).key;
-            if (entitys.Any(entity => string.IsNullOrWhiteSpace(key.GetValue(entity) as string))) throw new ArgumentNullException("_id");
+            if (entities.Any(entity => string.IsNullOrWhiteSpace(key.GetValue(entity) as string))) throw new ArgumentNullException("_id");
 
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
-            var bulkResult = Bulk(entityDescriptor, entitys, indexName, "update");
+            var bulkResult = Bulk(entityDescriptor, entities, indexName, "update");
 
             if (bulkResult.items.Any() != true) ThrowException(bulkResult.responseBody);
 
@@ -605,16 +605,16 @@ namespace Vitorm.ElasticSearch
             return SingleAction(entityDescriptor, entity, indexName, "_doc") != null ? 1 : 0;
         }
 
-        public virtual void SaveRange<Entity>(IEnumerable<Entity> entitys)
+        public virtual void SaveRange<Entity>(IEnumerable<Entity> entities)
         {
             var indexName = GetIndex<Entity>();
-            SaveRange<Entity>(entitys, indexName);
+            SaveRange<Entity>(entities, indexName);
         }
 
-        public virtual void SaveRange<Entity>(IEnumerable<Entity> entitys, string indexName)
+        public virtual void SaveRange<Entity>(IEnumerable<Entity> entities, string indexName)
         {
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
-            var bulkResult = Bulk(entityDescriptor, entitys, indexName, "index");
+            var bulkResult = Bulk(entityDescriptor, entities, indexName, "index");
 
             if (bulkResult.errors == true)
             {
@@ -623,10 +623,10 @@ namespace Vitorm.ElasticSearch
             }
 
             var items = bulkResult?.items;
-            if (items?.Length == entitys.Count())
+            if (items?.Length == entities.Count())
             {
                 var t = 0;
-                foreach (var entity in entitys)
+                foreach (var entity in entities)
                 {
                     var id = items[t].result?._id;
                     if (id != null) entityDescriptor.key?.SetValue(entity, id);

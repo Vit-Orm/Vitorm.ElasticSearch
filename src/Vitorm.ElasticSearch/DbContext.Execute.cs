@@ -104,16 +104,16 @@ namespace Vitorm.ElasticSearch
         /// action: create | index | update | delete
         /// </summary>
         /// <typeparam name="Entity"></typeparam>
-        /// <param name="entitys"></param>
+        /// <param name="entities"></param>
         /// <param name="indexName"></param>
         /// <param name="action"></param>
-        protected BulkResponse Bulk<Entity>(IEntityDescriptor entityDescriptor, IEnumerable<Entity> entitys, string indexName, string action)
+        protected BulkResponse Bulk<Entity>(IEntityDescriptor entityDescriptor, IEnumerable<Entity> entities, string indexName, string action)
         {
             var payload = new StringBuilder();
 
             if (action == "update")
             {
-                foreach (var entity in entitys)
+                foreach (var entity in entities)
                 {
                     payload.AppendLine($"{{\"{action}\":{{\"_index\":\"{indexName}\",\"_id\":\"{GetDocumentId(entityDescriptor, entity)}\"}}}}");
                     payload.Append("{\"doc\":").Append(Serialize(entity)).AppendLine("}");
@@ -121,14 +121,14 @@ namespace Vitorm.ElasticSearch
             }
             else if (action == "delete")
             {
-                foreach (var entity in entitys)
+                foreach (var entity in entities)
                 {
                     payload.AppendLine($"{{\"{action}\":{{\"_index\":\"{indexName}\",\"_id\":\"{GetDocumentId(entityDescriptor, entity)}\"}}}}");
                 }
             }
             else
             {
-                foreach (var entity in entitys)
+                foreach (var entity in entities)
                 {
                     payload.AppendLine($"{{\"{action}\":{{\"_index\":\"{indexName}\",\"_id\":\"{GetDocumentId(entityDescriptor, entity)}\"}}}}");
                     payload.AppendLine(Serialize(entity));
