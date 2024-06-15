@@ -7,11 +7,9 @@ using Vit.Linq.ExpressionTree.ComponentModel;
 using Vit.Linq;
 using Vit.Core.Module.Serialization;
 using System.Net.Http;
-using System.Text;
 using Vitorm.StreamQuery;
 using Vitorm.Entity;
 using Vit.Extensions;
-using System.Net;
 using System.Collections;
 using Vit.Extensions.Vitorm_Extensions;
 
@@ -78,7 +76,7 @@ namespace Vitorm.ElasticSearch
 
 
 
-        #region #1 Schema :  Create
+        #region #1.1 Schema :  Create
 
         public override void Create<Entity>()
         {
@@ -88,18 +86,12 @@ namespace Vitorm.ElasticSearch
 
         public virtual string Create(string indexName, bool throwErrorIfFailed = false)
         {
-            var url = $"{serverAddress}/{indexName}";
-            var strPayload = "{\"mappings\":{\"properties\":{\"@timestamp\":{\"type\":\"date\"},\"time\":{\"type\":\"date\"}}}}";
-            var content = new StringContent(strPayload, Encoding.UTF8, "application/json");
-            var httpResponse = httpClient.PutAsync(url, content).Result;
-            var strResponse = httpResponse.Content.ReadAsStringAsync().Result;
-            if (throwErrorIfFailed && !httpResponse.IsSuccessStatusCode) throw new Exception(strResponse);
-            return strResponse;
+            return CreateAsync(indexName, throwErrorIfFailed).Result;
         }
         #endregion
 
 
-        #region #1 Schema :  Drop
+        #region #1.2 Schema :  Drop
         public virtual void Drop<Entity>()
         {
             var indexName = GetIndex<Entity>();
@@ -108,15 +100,7 @@ namespace Vitorm.ElasticSearch
 
         public virtual void Drop(string indexName)
         {
-            var url = $"{serverAddress}/{indexName}";
-            var httpResponse = httpClient.DeleteAsync(url).Result;
-
-            if (httpResponse.IsSuccessStatusCode) return;
-
-            var strResponse = httpResponse.Content.ReadAsStringAsync().Result;
-            if (httpResponse.StatusCode == HttpStatusCode.NotFound && !string.IsNullOrWhiteSpace(strResponse)) return;
-
-            throw new Exception(strResponse);
+            DropAsync(indexName).Wait();
         }
         #endregion
 
@@ -130,12 +114,7 @@ namespace Vitorm.ElasticSearch
         }
         public virtual Entity Add<Entity>(Entity entity, string indexName)
         {
-            var entityDescriptor = GetEntityDescriptor(typeof(Entity));
-
-            var _id = entityDescriptor.key.GetValue(entity) as string;
-            var action = string.IsNullOrWhiteSpace(_id) ? "_doc" : "_create";
-
-            return SingleAction(entityDescriptor, entity, indexName, action);
+            return AddAsync(entity, indexName).Result;
         }
 
         #endregion
@@ -147,37 +126,14 @@ namespace Vitorm.ElasticSearch
             var indexName = GetIndex<Entity>();
             AddRange(entities, indexName);
         }
-        public void AddRange<Entity>(IEnumerable<Entity> entities, string indexName)
+        public virtual void AddRange<Entity>(IEnumerable<Entity> entities, string indexName)
         {
-            var entityDescriptor = GetEntityDescriptor(typeof(Entity));
-            var bulkResult = Bulk(entityDescriptor, entities, indexName, "create");
-
-            if (bulkResult.errors == true)
-            {
-                var reason = bulkResult.items?.FirstOrDefault(m => m.result?.error?.reason != null)?.result?.error?.reason;
-                ThrowException(reason, bulkResult.responseBody);
-            }
-
-            var items = bulkResult?.items;
-            if (items?.Length == entities.Count())
-            {
-                var t = 0;
-                foreach (var entity in entities)
-                {
-                    var id = items[t].result?._id;
-                    if (id != null) entityDescriptor.key?.SetValue(entity, id);
-                    t++;
-                }
-            }
+            AddRangeAsync(entities, indexName).Wait();
         }
         #endregion
 
 
-
-
-        #region #2 Retrieve : Get Query
-
-        #region Get
+        #region #2.1 Retrieve : Get
 
         public override Entity Get<Entity>(object keyValue)
         {
@@ -186,53 +142,14 @@ namespace Vitorm.ElasticSearch
         }
         public virtual Entity Get<Entity>(object keyValue, string indexName)
         {
-            var actionUrl = $"{serverAddress}/{indexName}/_doc/" + keyValue;
-
-            var httpResponse = httpClient.GetAsync(actionUrl).Result;
-
-            if (httpResponse.StatusCode == HttpStatusCode.NotFound)
-            {
-                return default;
-            }
-
-            httpResponse.EnsureSuccessStatusCode();
-
-            var strResponse = httpResponse.Content.ReadAsStringAsync().Result;
-            var response = Deserialize<GetResult<Entity>>(strResponse);
-
-            if (response.found != true) return default;
-
-            var entity = response._source;
-            if (entity != null && response._id != null)
-            {
-                var entityDescriptor = GetEntityDescriptor(typeof(Entity));
-                entityDescriptor.key.SetValue(entity, response._id);
-            }
-            return entity;
+            return GetAsync<Entity>(keyValue, indexName).Result;
         }
 
-        /// <summary>
-        /// result for   GET dev-orm/_doc/3
-        /// </summary>
-        /// <typeparam name="Entity"></typeparam>
-        class GetResult<Entity>
-        {
-            public string _index { get; set; }
-            public string _id { get; set; }
-
-            public string _type { get; set; }
-            public int? _version { get; set; }
-
-            public int? _seq_no { get; set; }
-            public int? _primary_term { get; set; }
-            public bool? found { get; set; }
-            public Entity _source { get; set; }
-        }
-        #endregion      
-
-        #region Query
+        #endregion
 
 
+
+        #region #2.2 Retrieve : Query
         public override IQueryable<Entity> Query<Entity>()
         {
             var indexName = GetIndex<Entity>();
@@ -240,7 +157,7 @@ namespace Vitorm.ElasticSearch
         }
         public virtual IQueryable<Entity> Query<Entity>(string indexName)
         {
-            var dbContextId = "SqlDbSet_" + GetHashCode();
+            var dbContextId = "ES_DbSet_" + GetHashCode();
             Func<Expression, Type, object> QueryExecutor = (expression, type) =>
             {
                 // #1 convert to ExpressionNode
@@ -318,206 +235,6 @@ namespace Vitorm.ElasticSearch
             return QueryableBuilder.Build<Entity>(QueryExecutor, dbContextId);
         }
 
-        protected virtual Delegate BuildSelect(Type entityType, ExpressionNode selectedFields, string entityParameterName)
-        {
-            // Compile Lambda
-
-            var lambdaNode = ExpressionNode.Lambda(new[] { entityParameterName }, selectedFields);
-            //var strNode = Json.Serialize(lambdaNode);
-
-            var lambdaExp = convertService.ToLambdaExpression(lambdaNode, new[] { entityType });
-            return lambdaExp.Compile();
-        }
-
-        protected virtual SearchResponse<Model> Query<Model>(object queryPayload, string indexName)
-        {
-            var searchUrl = $"{serverAddress}/{indexName}/_search";
-            var strQuery = Serialize(queryPayload);
-            var searchContent = new StringContent(strQuery, Encoding.UTF8, "application/json");
-            var httpResponse = httpClient.PostAsync(searchUrl, searchContent).Result;
-
-            var strResponse = httpResponse.Content.ReadAsStringAsync().Result;
-            if (!httpResponse.IsSuccessStatusCode) throw new Exception(strResponse);
-
-            var searchResult = Deserialize<SearchResponse<Model>>(strResponse);
-            return searchResult;
-        }
-        public virtual object BuildElasticQueryPayload(CombinedStream combinedStream)
-        {
-            var queryBody = new Dictionary<string, object>();
-            // #1 condition
-            var conditionNode = combinedStream.where;
-            if (conditionNode == null)
-                queryBody["query"] = new { match_all = new { } };
-            else
-                queryBody["query"] = ConvertCondition(conditionNode);
-            // #2 orders
-            if (combinedStream.orders?.Any() == true)
-            {
-                queryBody["sort"] = combinedStream.orders
-                                 .Select(order => new Dictionary<string, object> { [GetNodeField(order.member)] = new { order = order.asc ? "asc" : "desc" } })
-                                 .ToList();
-            }
-            // #3 skip take
-            if (combinedStream.skip.HasValue)
-                queryBody["from"] = combinedStream.skip.Value;
-            if (combinedStream.take.HasValue)
-                queryBody["size"] = combinedStream.take.Value;
-            return queryBody;
-        }
-        #region ConvertCondition
-        public virtual string GetNodeField(ExpressionNode_Member data)
-        {
-            string parent = null;
-            if (data.objectValue?.nodeType == NodeType.Member) parent = GetNodeField(data.objectValue);
-            if (parent == null)
-                return data?.memberName;
-            return parent + "." + data?.memberName;
-        }
-        public virtual object GetNodeValue(ExpressionNode_Constant data)
-        {
-            return data?.value;
-        }
-        static readonly Dictionary<string, string> conditionMap
-            = new Dictionary<string, string> { [NodeType.And] = "must", [NodeType.Or] = "should", [NodeType.Not] = "must_not" };
-        public virtual object ConvertCondition(ExpressionNode data)
-        {
-            switch (data.nodeType)
-            {
-                case NodeType.And:
-                case NodeType.Or:
-                    {
-                        ExpressionNode_Binary binary = data;
-                        var condition = conditionMap[data.nodeType];
-                        var conditions = new[] { ConvertCondition(binary.left), ConvertCondition(binary.right) };
-                        return new { @bool = new Dictionary<string, object> { [condition] = conditions } };
-                    }
-                case NodeType.Not:
-                    {
-                        ExpressionNode_Not notNode = data;
-                        var condition = conditionMap[data.nodeType];
-                        var conditions = new[] { ConvertCondition(notNode.body) };
-                        return new { @bool = new Dictionary<string, object> { [condition] = conditions } };
-                    }
-                case NodeType.NotEqual:
-                    {
-                        ExpressionNode_Binary binary = data;
-                        return ConvertCondition(ExpressionNode.Not(ExpressionNode.Binary(nodeType: NodeType.Equal, left: binary.left, right: binary.right)));
-                    }
-                case NodeType.Equal:
-                    {
-                        ExpressionNode_Binary binary = data;
-                        ExpressionNode_Member memberNode;
-                        ExpressionNode valueNode;
-                        string operation = binary.nodeType;
-                        if (binary.left.nodeType == NodeType.Member)
-                        {
-                            memberNode = binary.left;
-                            valueNode = binary.right;
-                        }
-                        else
-                        {
-                            memberNode = binary.right;
-                            valueNode = binary.left;
-                        }
-                        var field = GetNodeField(memberNode);
-                        var value = GetNodeValue(valueNode);
-
-                        // {"term":{"name":"lith" } }
-                        return new { term = new Dictionary<string, object> { [field] = value } };
-                    }
-                case NodeType.LessThan:
-                case NodeType.LessThanOrEqual:
-                case NodeType.GreaterThan:
-                case NodeType.GreaterThanOrEqual:
-                    {
-                        ExpressionNode_Binary binary = data;
-                        ExpressionNode_Member memberNode;
-                        ExpressionNode valueNode;
-                        string operation = binary.nodeType;
-                        if (binary.left.nodeType == NodeType.Member)
-                        {
-                            memberNode = binary.left;
-                            valueNode = binary.right;
-                        }
-                        else
-                        {
-                            memberNode = binary.right;
-                            valueNode = binary.left;
-                            if (operation.StartsWith("LessThan")) operation = operation.Replace("LessThan", "GreaterThan");
-                            else operation = operation.Replace("GreaterThan", "LessThan");
-                        }
-                        var field = GetNodeField(memberNode);
-                        var value = GetNodeValue(valueNode);
-
-
-                        //  { "range": { "age": { "gte": 10, "lte": 20 } } }
-                        string optType;
-                        switch (operation)
-                        {
-                            case NodeType.GreaterThan: optType = "gt"; break;
-                            case NodeType.GreaterThanOrEqual: optType = "gte"; break;
-                            case NodeType.LessThan: optType = "lt"; break;
-                            case NodeType.LessThanOrEqual: optType = "lte"; break;
-                            default: throw new NotSupportedException("not supported operator:" + operation);
-                        }
-                        return new { range = new Dictionary<string, object> { [field] = new Dictionary<string, object> { [optType] = value } } };
-                    }
-                case NodeType.MethodCall:
-                    {
-                        ExpressionNode_MethodCall methodCall = data;
-                        switch (methodCall.methodName)
-                        {
-                            #region ##1 String method:  StartsWith EndsWith Contains
-                            case nameof(string.StartsWith): // String.StartsWith
-                                {
-                                    ExpressionNode_Member memberNode = methodCall.@object;
-                                    ExpressionNode valueNode = methodCall.arguments[0];
-                                    var field = GetNodeField(memberNode);
-                                    var value = GetNodeValue(valueNode) + "*";
-                                    return GetCondition_StringContains(field, value);
-                                }
-                            case nameof(string.EndsWith): // String.EndsWith
-                                {
-                                    ExpressionNode_Member memberNode = methodCall.@object;
-                                    ExpressionNode valueNode = methodCall.arguments[0];
-                                    var field = GetNodeField(memberNode);
-                                    var value = "*" + GetNodeValue(valueNode);
-                                    return GetCondition_StringContains(field, value);
-                                }
-                            case nameof(string.Contains) when methodCall.methodCall_typeName == "String": // String.Contains
-                                {
-                                    ExpressionNode_Member memberNode = methodCall.@object;
-                                    ExpressionNode valueNode = methodCall.arguments[0];
-                                    var field = GetNodeField(memberNode);
-                                    var value = "*" + GetNodeValue(valueNode) + "*";
-                                    return GetCondition_StringContains(field, value);
-                                }
-                            #endregion
-
-                            // ##2 in
-                            case nameof(Enumerable.Contains):
-                                {
-                                    ExpressionNode valueNode = methodCall.arguments[0];
-                                    ExpressionNode_Member memberNode = methodCall.arguments[1];
-                                    var field = GetNodeField(memberNode);
-                                    var value = GetNodeValue(valueNode);
-
-                                    // {"terms":{"name":["lith1","lith2"] } }
-                                    return new { terms = new Dictionary<string, object> { [field] = value } };
-                                }
-                        }
-                        break;
-                    }
-            }
-            throw new NotSupportedException("not suported nodeType: " + data.nodeType);
-        }
-        object GetCondition_StringContains(string field, object value)
-        {
-            // { "wildcard": { "name.keyword": "*lith*" } }
-            return new { wildcard = new Dictionary<string, object> { [field + ".keyword"] = value } };
-        }
-        #endregion
 
         public class SearchResponse<T>
         {
@@ -550,7 +267,6 @@ namespace Vitorm.ElasticSearch
 
         #endregion
 
-        #endregion
 
 
 
@@ -574,17 +290,7 @@ namespace Vitorm.ElasticSearch
 
         public virtual int UpdateRange<Entity>(IEnumerable<Entity> entities, string indexName)
         {
-            var key = GetEntityDescriptor(typeof(Entity)).key;
-            if (entities.Any(entity => string.IsNullOrWhiteSpace(key.GetValue(entity) as string))) throw new ArgumentNullException("_id");
-
-            var entityDescriptor = GetEntityDescriptor(typeof(Entity));
-            var bulkResult = Bulk(entityDescriptor, entities, indexName, "update");
-
-            if (bulkResult.items.Any() != true) ThrowException(bulkResult.responseBody);
-
-            var rowCount = bulkResult.items.Count(item => item.update?.status == 200);
-
-            return rowCount;
+            return UpdateRangeAsync<Entity>(entities, indexName).Result;
         }
 
         #endregion
@@ -600,9 +306,7 @@ namespace Vitorm.ElasticSearch
 
         public virtual int Save<Entity>(Entity entity, string indexName)
         {
-            var entityDescriptor = GetEntityDescriptor(typeof(Entity));
-
-            return SingleAction(entityDescriptor, entity, indexName, "_doc") != null ? 1 : 0;
+            return SaveAsync<Entity>(entity, indexName).Result;
         }
 
         public virtual void SaveRange<Entity>(IEnumerable<Entity> entities)
@@ -613,26 +317,7 @@ namespace Vitorm.ElasticSearch
 
         public virtual void SaveRange<Entity>(IEnumerable<Entity> entities, string indexName)
         {
-            var entityDescriptor = GetEntityDescriptor(typeof(Entity));
-            var bulkResult = Bulk(entityDescriptor, entities, indexName, "index");
-
-            if (bulkResult.errors == true)
-            {
-                var reason = bulkResult.items?.FirstOrDefault(m => m.result?.error?.reason != null)?.result?.error?.reason;
-                ThrowException(reason, bulkResult.responseBody);
-            }
-
-            var items = bulkResult?.items;
-            if (items?.Length == entities.Count())
-            {
-                var t = 0;
-                foreach (var entity in entities)
-                {
-                    var id = items[t].result?._id;
-                    if (id != null) entityDescriptor.key?.SetValue(entity, id);
-                    t++;
-                }
-            }
+            SaveRangeAsync<Entity>(entities, indexName).Wait();
         }
         #endregion
 
@@ -678,32 +363,7 @@ namespace Vitorm.ElasticSearch
         }
         public virtual int DeleteByKey(object keyValue, string indexName)
         {
-            var _id = keyValue?.ToString();
-
-            if (string.IsNullOrWhiteSpace(_id)) throw new ArgumentNullException("_id");
-
-            var actionUrl = $"{serverAddress}/{indexName}/_doc/" + _id;
-
-            var httpResponse = httpClient.DeleteAsync(actionUrl).Result;
-            return httpResponse.IsSuccessStatusCode ? 1 : 0;
-
-            //var strResponse = httpResponse.Content.ReadAsStringAsync().Result;
-            /*
-            {
-              "_index": "user",
-              "_type": "_doc",
-              "_id": "5",
-              "_version": 2,
-              "result": "deleted",
-              "_shards": {
-                "total": 2,
-                "successful": 1,
-                "failed": 0
-              },
-              "_seq_no": 6,
-              "_primary_term": 1
-            }
-            */
+            return DeleteByKeyAsync(keyValue, indexName).Result;
         }
 
 
@@ -715,27 +375,7 @@ namespace Vitorm.ElasticSearch
         }
         public virtual int DeleteByKeys<Entity, Key>(IEnumerable<Key> keys, string indexName)
         {
-            var payload = new StringBuilder();
-            foreach (var _id in keys)
-            {
-                payload.AppendLine($"{{\"delete\":{{\"_index\":\"{indexName}\",\"_id\":\"{_id}\"}}}}");
-            }
-            var actionUrl = $"{serverAddress}/{indexName}/_bulk";
-            var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
-            var httpResponse = httpClient.PostAsync(actionUrl, content).Result;
-
-            var strResponse = httpResponse.Content.ReadAsStringAsync().Result;
-            if (string.IsNullOrWhiteSpace(strResponse)) httpResponse.EnsureSuccessStatusCode();
-
-            var response = Deserialize<BulkResponse>(strResponse);
-
-            if (response.errors == true)
-            {
-                var reason = response.items?.FirstOrDefault(m => m.result?.error?.reason != null)?.result?.error?.reason;
-                ThrowException(reason, strResponse);
-            }
-
-            return response.items.Count(item => item.result?.status == 200);
+            return DeleteByKeysAsync<Entity, Key>(keys, indexName).Result;
         }
 
         #endregion

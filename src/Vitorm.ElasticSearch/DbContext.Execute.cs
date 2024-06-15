@@ -3,12 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Threading.Tasks;
 
 using Vit.Extensions.Linq_Extensions;
 
 using Vitorm.Entity;
-
-using static Vitorm.ElasticSearch.DbContext.BulkResponse;
 
 namespace Vitorm.ElasticSearch
 {
@@ -35,13 +34,19 @@ namespace Vitorm.ElasticSearch
         }
 
 
-        protected virtual Entity SingleAction<Entity>(IEntityDescriptor entityDescriptor, Entity entity, string indexName, string action)
+
+
+        #region SingleActionAsync
+
+
+        protected virtual async Task<Entity> SingleActionAsync<Entity>(IEntityDescriptor entityDescriptor, Entity entity, string indexName, string action)
         {
             var _id = entityDescriptor.key.GetValue(entity) as string;
             var actionUrl = $"{serverAddress}/{indexName}/{action}/{_id}";
             var content = new StringContent(Serialize(entity), Encoding.UTF8, "application/json");
-            var response = httpClient.PostAsync(actionUrl, content).Result;
-            var strResponse = response.Content.ReadAsStringAsync().Result;
+
+            var response = await httpClient.PostAsync(actionUrl, content);
+            var strResponse = await response.Content.ReadAsStringAsync();
 
             var result = Deserialize<AddResult>(strResponse);
 
@@ -96,8 +101,10 @@ namespace Vitorm.ElasticSearch
              */
             #endregion
         }
+        #endregion
 
-        #region Bulk
+
+        #region BulkAsync
 
 
         /// <summary>
@@ -107,7 +114,7 @@ namespace Vitorm.ElasticSearch
         /// <param name="entities"></param>
         /// <param name="indexName"></param>
         /// <param name="action"></param>
-        protected BulkResponse Bulk<Entity>(IEntityDescriptor entityDescriptor, IEnumerable<Entity> entities, string indexName, string action)
+        protected async Task<BulkResponse> BulkAsync<Entity>(IEntityDescriptor entityDescriptor, IEnumerable<Entity> entities, string indexName, string action)
         {
             var payload = new StringBuilder();
 
@@ -136,9 +143,9 @@ namespace Vitorm.ElasticSearch
             }
             var actionUrl = $"{serverAddress}/{indexName}/_bulk";
             var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
-            var httpResponse = httpClient.PostAsync(actionUrl, content).Result;
+            var httpResponse = await httpClient.PostAsync(actionUrl, content);
 
-            var strResponse = httpResponse.Content.ReadAsStringAsync().Result;
+            var strResponse = await httpResponse.Content.ReadAsStringAsync();
             if (string.IsNullOrWhiteSpace(strResponse)) httpResponse.EnsureSuccessStatusCode();
 
             var response = Deserialize<BulkResponse>(strResponse);
