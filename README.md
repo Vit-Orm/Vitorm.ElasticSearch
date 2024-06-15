@@ -26,7 +26,7 @@ Vitorm.ElasticSearch: an simple orm for ElasticSearch
     
 - [Query_Numric](test/Vitorm.ElasticSearch.MsTest/CommonTest/Query_Type_Numric_Test.cs)  
     
-- [Save](test/Vitorm.MySql.MsTest/CustomTest/CRUD_Save_Test.cs)  
+- [Save](test/Vitorm.ElasticSearch.MsTest/CustomTest/CRUD_Save_Test.cs)  
 - [Query_NestedField](test/Vitorm.ElasticSearch.MsTest/CustomTest/Query_NestedField_Test.cs)  
 
 
