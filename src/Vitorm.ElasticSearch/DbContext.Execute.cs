@@ -4,13 +4,22 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 
+using Vit.Extensions.Linq_Extensions;
+
 using Vitorm.Entity;
+
+using static Vitorm.ElasticSearch.DbContext.BulkResponse;
 
 namespace Vitorm.ElasticSearch
 {
     public partial class DbContext
     {
-        static void ThrowException(string message, string plainResult) => throw new Exception(message, new Exception(plainResult));
+        static void ThrowException(params string[] messages)
+        {
+            Exception ex = null;
+            messages.Reverse().ForEach(msg => ex = new Exception(msg, ex));
+            throw ex;
+        }
 
 
         public class Shards
@@ -90,6 +99,7 @@ namespace Vitorm.ElasticSearch
 
         #region Bulk
 
+
         /// <summary>
         /// action: create | index | update | delete
         /// </summary>
@@ -100,10 +110,29 @@ namespace Vitorm.ElasticSearch
         protected BulkResponse Bulk<Entity>(IEntityDescriptor entityDescriptor, IEnumerable<Entity> entitys, string indexName, string action)
         {
             var payload = new StringBuilder();
-            foreach (var entity in entitys)
+
+            if (action == "update")
             {
-                payload.AppendLine($"{{\"{action}\":{{\"_index\":\"{indexName}\",\"_id\":\"{GetDocumentId(entityDescriptor, entity)}\"}}}}");
-                payload.AppendLine(Serialize(entity));
+                foreach (var entity in entitys)
+                {
+                    payload.AppendLine($"{{\"{action}\":{{\"_index\":\"{indexName}\",\"_id\":\"{GetDocumentId(entityDescriptor, entity)}\"}}}}");
+                    payload.Append("{\"doc\":").Append(Serialize(entity)).AppendLine("}");
+                }
+            }
+            else if (action == "delete")
+            {
+                foreach (var entity in entitys)
+                {
+                    payload.AppendLine($"{{\"{action}\":{{\"_index\":\"{indexName}\",\"_id\":\"{GetDocumentId(entityDescriptor, entity)}\"}}}}");
+                }
+            }
+            else
+            {
+                foreach (var entity in entitys)
+                {
+                    payload.AppendLine($"{{\"{action}\":{{\"_index\":\"{indexName}\",\"_id\":\"{GetDocumentId(entityDescriptor, entity)}\"}}}}");
+                    payload.AppendLine(Serialize(entity));
+                }
             }
             var actionUrl = $"{serverAddress}/{indexName}/_bulk";
             var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
@@ -113,27 +142,36 @@ namespace Vitorm.ElasticSearch
             if (string.IsNullOrWhiteSpace(strResponse)) httpResponse.EnsureSuccessStatusCode();
 
             var response = Deserialize<BulkResponse>(strResponse);
-
-            if (response.errors == true)
-            {
-                var reason = response.items?.FirstOrDefault(m => m.result?.error?.reason != null)?.result?.error?.reason;
-                ThrowException(reason, strResponse);
-            }
+            response.responseBody = strResponse;
 
             return response;
-
         }
+
+
+        /*
+        POST _bulk
+        { "index" : { "_index" : "test", "_id" : "1" } }
+        { "field1" : "value1" }
+        { "delete" : { "_index" : "test", "_id" : "2" } }
+        { "create" : { "_index" : "test", "_id" : "3" } }
+        { "field1" : "value3" }
+        { "update" : {"_id" : "1", "_index" : "test"} }
+        { "doc" : {"field2" : "value2"} }         
+         */
         public class BulkResponse
         {
+            public string responseBody { get; set; }
             public int? took { get; set; }
             public bool? errors { get; set; }
             public Item[] items { get; set; }
 
             public class Item
             {
+                public ItemStatus index { get; set; }
                 public ItemStatus create { get; set; }
+                public ItemStatus update { get; set; }
                 public ItemStatus delete { get; set; }
-                public ItemStatus result => create ?? delete;
+                public ItemStatus result => index ?? create ?? update ?? delete;
             }
             public class ItemStatus
             {

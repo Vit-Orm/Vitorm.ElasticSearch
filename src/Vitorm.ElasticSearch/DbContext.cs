@@ -48,14 +48,12 @@ namespace Vitorm.ElasticSearch
         }
 
 
+        // GetIndex
+        public virtual Func<Type, string> GetEntityIndex { set; get; }
         public virtual string GetIndex<Model>()
         {
             return GetEntityIndex(typeof(Model));
         }
-
-
-        public virtual Func<Type, string> GetEntityIndex { set; get; }
-
         public string GetDefaultIndex(Type entityType)
         {
             var entityDescriptor = GetEntityDescriptor(entityType);
@@ -63,7 +61,10 @@ namespace Vitorm.ElasticSearch
         }
 
 
+        // GetDocumentId
         public Func<IEntityDescriptor, object, string> GetDocumentId = (entityDescriptor, entity) => entityDescriptor.key.GetValue(entity)?.ToString();
+
+        // Serialize
         public virtual string Serialize<Model>(Model m)
         {
             return Json.Serialize(m);
@@ -75,7 +76,7 @@ namespace Vitorm.ElasticSearch
 
 
 
-      
+
 
         #region #1 Schema :  Create
 
@@ -99,7 +100,6 @@ namespace Vitorm.ElasticSearch
 
 
         #region #1 Schema :  Drop
-
         public virtual void Drop<Entity>()
         {
             var indexName = GetIndex<Entity>();
@@ -121,8 +121,7 @@ namespace Vitorm.ElasticSearch
         #endregion
 
 
-        // #1 Create :  Add AddRange
-        #region Add
+        #region #1.1 Create :  Add
 
         public override Entity Add<Entity>(Entity entity)
         {
@@ -139,12 +138,10 @@ namespace Vitorm.ElasticSearch
             return SingleAction(entityDescriptor, entity, indexName, action);
         }
 
-
-
         #endregion
 
 
-        #region AddRange
+        #region #1.2 Create :  AddRange
         public override void AddRange<Entity>(IEnumerable<Entity> entitys)
         {
             var indexName = GetIndex<Entity>();
@@ -154,6 +151,12 @@ namespace Vitorm.ElasticSearch
         {
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
             var bulkResult = Bulk(entityDescriptor, entitys, indexName, "create");
+
+            if (bulkResult.errors == true)
+            {
+                var reason = bulkResult.items?.FirstOrDefault(m => m.result?.error?.reason != null)?.result?.error?.reason;
+                ThrowException(reason, bulkResult.responseBody);
+            }
 
             var items = bulkResult?.items;
             if (items?.Length == entitys.Count())
@@ -173,7 +176,6 @@ namespace Vitorm.ElasticSearch
 
 
         #region #2 Retrieve : Get Query
-
 
         #region Get
 
@@ -266,7 +268,7 @@ namespace Vitorm.ElasticSearch
                 var queryPayload = BuildElasticQueryPayload(combinedStream);
 
 
-                if (combinedStream.method == nameof(Orm_Extensions.ToExecuteString)) 
+                if (combinedStream.method == nameof(Orm_Extensions.ToExecuteString))
                 {
                     return Serialize(queryPayload);
                 }
@@ -473,7 +475,7 @@ namespace Vitorm.ElasticSearch
                                     ExpressionNode valueNode = methodCall.arguments[0];
                                     var field = GetNodeField(memberNode);
                                     var value = GetNodeValue(valueNode) + "*";
-                                    return GetCondition_StringContains(field,   value);
+                                    return GetCondition_StringContains(field, value);
                                 }
                             case nameof(string.EndsWith): // String.EndsWith
                                 {
@@ -481,7 +483,7 @@ namespace Vitorm.ElasticSearch
                                     ExpressionNode valueNode = methodCall.arguments[0];
                                     var field = GetNodeField(memberNode);
                                     var value = "*" + GetNodeValue(valueNode);
-                                    return GetCondition_StringContains(field,   value);
+                                    return GetCondition_StringContains(field, value);
                                 }
                             case nameof(string.Contains) when methodCall.methodCall_typeName == "String": // String.Contains
                                 {
@@ -489,7 +491,7 @@ namespace Vitorm.ElasticSearch
                                     ExpressionNode valueNode = methodCall.arguments[0];
                                     var field = GetNodeField(memberNode);
                                     var value = "*" + GetNodeValue(valueNode) + "*";
-                                    return GetCondition_StringContains(field,  value);
+                                    return GetCondition_StringContains(field, value);
                                 }
                             #endregion
 
@@ -514,7 +516,7 @@ namespace Vitorm.ElasticSearch
         {
             // { "wildcard": { "name.keyword": "*lith*" } }
             return new { wildcard = new Dictionary<string, object> { [field + ".keyword"] = value } };
-        }        
+        }
         #endregion
 
         public class SearchResponse<T>
@@ -573,12 +575,16 @@ namespace Vitorm.ElasticSearch
         public virtual int UpdateRange<Entity>(IEnumerable<Entity> entitys, string indexName)
         {
             var key = GetEntityDescriptor(typeof(Entity)).key;
-
             if (entitys.Any(entity => string.IsNullOrWhiteSpace(key.GetValue(entity) as string))) throw new ArgumentNullException("_id");
 
-            SaveRange(entitys);
+            var entityDescriptor = GetEntityDescriptor(typeof(Entity));
+            var bulkResult = Bulk(entityDescriptor, entitys, indexName, "update");
 
-            return entitys.Count();
+            if (bulkResult.items.Any() != true) ThrowException(bulkResult.responseBody);
+
+            var rowCount = bulkResult.items.Count(item => item.update?.status == 200);
+
+            return rowCount;
         }
 
         #endregion
@@ -596,9 +602,6 @@ namespace Vitorm.ElasticSearch
         {
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
 
-            //var _id = entityDescriptor.key.GetValue(entity) as string;
-            //if (string.IsNullOrWhiteSpace(_id)) throw new ArgumentNullException("_id");
-
             return SingleAction(entityDescriptor, entity, indexName, "_doc") != null ? 1 : 0;
         }
 
@@ -612,6 +615,12 @@ namespace Vitorm.ElasticSearch
         {
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
             var bulkResult = Bulk(entityDescriptor, entitys, indexName, "index");
+
+            if (bulkResult.errors == true)
+            {
+                var reason = bulkResult.items?.FirstOrDefault(m => m.result?.error?.reason != null)?.result?.error?.reason;
+                ThrowException(reason, bulkResult.responseBody);
+            }
 
             var items = bulkResult?.items;
             if (items?.Length == entitys.Count())
@@ -642,13 +651,24 @@ namespace Vitorm.ElasticSearch
             return DeleteByKey(key, indexName);
         }
 
-        public override int DeleteRange<Entity>(IEnumerable<Entity> entitys)
+
+
+        public override int DeleteRange<Entity>(IEnumerable<Entity> entities)
         {
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
 
-            var keys = entitys.Select(entity => entityDescriptor.key.GetValue(entity)).ToList();
+            var keys = entities.Select(entity => entityDescriptor.key.GetValue(entity)).ToList();
             return DeleteByKeys<Entity, object>(keys);
         }
+        public virtual int DeleteRange<Entity>(IEnumerable<Entity> entities, string indexName)
+        {
+            var entityDescriptor = GetEntityDescriptor(typeof(Entity));
+
+            var keys = entities.Select(entity => entityDescriptor.key.GetValue(entity)).ToList();
+            return DeleteByKeys<Entity, object>(keys, indexName);
+        }
+
+
 
 
         public override int DeleteByKey<Entity>(object keyValue)
@@ -685,6 +705,9 @@ namespace Vitorm.ElasticSearch
             }
             */
         }
+
+
+
         public override int DeleteByKeys<Entity, Key>(IEnumerable<Key> keys)
         {
             var indexName = GetIndex<Entity>();

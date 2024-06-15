@@ -14,7 +14,15 @@
         <Authors>Lith</Authors>
         <Description>orm for ElasticSearch</Description>
         <PackageProjectUrl>https://github.com/VitormLib/Vitorm.ElasticSearch</PackageProjectUrl>
+        <PackageIcon>vitorm_logo_v1.png</PackageIcon>
     </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="..\..\doc\vitorm_logo_v1.png">
+            <Pack>True</Pack>
+            <PackagePath>\</PackagePath>
+        </None>
+    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Vit.Core" Version="2.1.21" />

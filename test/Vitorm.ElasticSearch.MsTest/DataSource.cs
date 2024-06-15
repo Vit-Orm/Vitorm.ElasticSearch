@@ -9,15 +9,8 @@ namespace Vitorm.MsTest
         [System.Text.Json.Serialization.JsonIgnore]
         [Newtonsoft.Json.JsonIgnore]
         public string key { get; set; }
-
  
-        //[System.Text.Json.Serialization.JsonIgnore]
-        //[Newtonsoft.Json.JsonIgnore]
         public int id { get; set; }
-        //{
-        //    get => int.TryParse(key, out var v) ? v : 0;
-        //    set => key = value.ToString();
-        //}
         public string name { get; set; }
         public DateTime? birth { get; set; }
 
@@ -28,6 +21,13 @@ namespace Vitorm.MsTest
         public User father { get; set; }
         public User mother { get; set; }
 
+        public static User NewUser(int id) => new User { key = id.ToString(), id = id, name = "testUser" + id };
+
+        public static List<User> NewUsers(int startId, int count = 1)
+        {
+            return Enumerable.Range(startId, count).Select(NewUser).ToList();
+        }
+
     }
 
 
@@ -35,17 +35,37 @@ namespace Vitorm.MsTest
     {
         static string connectionString = Appsettings.json.GetStringByPath("App.Db.ConnectionString");
 
+
         static int dbIndexCount = 0;
+        public static Vitorm.ElasticSearch.DbContext CreateDbContextForWriting()
+        {
+            var dbContext = new Vitorm.ElasticSearch.DbContext(connectionString);
+            dbIndexCount++;
+            var dbIndexName = "user" + dbIndexCount;
+            dbContext.GetEntityIndex = (_) => dbIndexName;
+            InitDbContext(dbContext);
+            return dbContext;
+        }
+
+
         static bool initedDefaultIndex = false;
         public static Vitorm.ElasticSearch.DbContext CreateDbContext()
         {
-       
             var dbContext = new Vitorm.ElasticSearch.DbContext(connectionString);
 
-            //dbIndexCount++;
-            //var dbIndexName = "dev-orm-" + dbIndexCount;
-            //dbContext.GetEntityIndex=(_)=> dbIndexName;
+            lock (typeof(DataSource))
+            {
+                if (!initedDefaultIndex)
+                {
+                    InitDbContext(dbContext);
+                    initedDefaultIndex = true;
+                }
+            }
+            return dbContext;
+        }
 
+        static void InitDbContext(Vitorm.ElasticSearch.DbContext dbContext)
+        {
             var users = new List<User> {
                     new User { key="1",id=1, name="u146", fatherId=4, motherId=6 },
                     new User { key="2",id=2, name="u246", fatherId=4, motherId=6 },
@@ -63,21 +83,12 @@ namespace Vitorm.MsTest
                 user.mother = users.FirstOrDefault(m => m.id == user.motherId);
             });
 
-            lock (typeof(DataSource))
-            {
-                //if (!initedDefaultIndex)
-                //{
-                //    dbContext.Drop<User>();
-                //    dbContext.Create<User>();
-                //    dbContext.AddRange(users);
 
-                //    Thread.Sleep(2000);
-                //    initedDefaultIndex = true;
-                //}
-            }
-      
-            return dbContext;
+            dbContext.Drop<User>();
+            dbContext.Create<User>();
+            dbContext.AddRange(users);
+
+            Thread.Sleep(2000);
         }
-
     }
 }
