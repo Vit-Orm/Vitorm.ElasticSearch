@@ -35,6 +35,7 @@ Vitorm.ElasticSearch: an simple orm for ElasticSearch
 ----------------------
 # TOOD
 
+ - Extension Method to get Result with TotalCount and score
  - support store DateTime and query with time
  - Test_ExecuteDelete  (ES api : delete-by-query)
  - ExecuteUpdate (ES api : update by query)
