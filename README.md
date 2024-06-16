@@ -9,7 +9,7 @@ Vitorm.ElasticSearch: an simple orm for ElasticSearch
 
 | Build | NuGet |
 | -------- | -------- |
-|![](https://github.com/VitormLib/Vitorm.ElasticSearch/workflows/ki_multibranch/badge.svg) | [![](https://img.shields.io/nuget/v/Vitorm.ElasticSearch.svg)](https://www.nuget.org/packages/Vitorm/) ![](https://img.shields.io/nuget/dt/Vitorm.ElasticSearch.svg) |
+|![](https://github.com/VitormLib/Vitorm.ElasticSearch/workflows/ki_devops3/badge.svg) | [![](https://img.shields.io/nuget/v/Vitorm.ElasticSearch.svg)](https://www.nuget.org/packages/Vitorm.ElasticSearch) ![](https://img.shields.io/nuget/dt/Vitorm.ElasticSearch.svg) |
 
 
 
