@@ -6,7 +6,7 @@
 
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
-        <Version>1.0.0</Version>
+        <Version>1.0.1</Version>
         <LangVersion>9.0</LangVersion>
     </PropertyGroup>
 
@@ -26,7 +26,7 @@
 
     <ItemGroup>
         <PackageReference Include="Vit.Core" Version="2.1.21" />
-        <PackageReference Include="Vitorm" Version="1.0.0" />
+        <PackageReference Include="Vitorm" Version="1.0.1" />
     </ItemGroup>
 
 </Project>
