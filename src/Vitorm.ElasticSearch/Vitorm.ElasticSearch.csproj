@@ -26,7 +26,7 @@
 
     <ItemGroup>
         <PackageReference Include="Vit.Core" Version="2.1.21" />
-        <PackageReference Include="Vitorm" Version="1.0.0" />
+        <PackageReference Include="Vitorm" Version="1.0.1" />
     </ItemGroup>
 
 </Project>
