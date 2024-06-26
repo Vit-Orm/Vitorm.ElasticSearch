@@ -77,13 +77,13 @@ namespace Vitorm.ElasticSearch
             return data?.value;
         }
         static readonly Dictionary<string, string> conditionMap
-            = new Dictionary<string, string> { [NodeType.And] = "must", [NodeType.Or] = "should", [NodeType.Not] = "must_not" };
+            = new Dictionary<string, string> { [NodeType.AndAlso] = "must", [NodeType.OrElse] = "should", [NodeType.Not] = "must_not" };
         public virtual object ConvertCondition(ExpressionNode data)
         {
             switch (data.nodeType)
             {
-                case NodeType.And:
-                case NodeType.Or:
+                case NodeType.AndAlso:
+                case NodeType.OrElse:
                     {
                         ExpressionNode_Binary binary = data;
                         var condition = conditionMap[data.nodeType];
