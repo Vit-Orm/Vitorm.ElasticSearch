@@ -27,18 +27,23 @@ namespace Vitorm.ElasticSearch
         /// </summary>
         public string serverAddress { get; set; }
 
-        private System.Net.Http.HttpClient httpClient = null;
+        protected System.Net.Http.HttpClient httpClient = null;
+        protected static System.Net.Http.HttpClient defaultHttpClient = null;
         public DbContext(string serverAddress, System.Net.Http.HttpClient httpClient = null)
         {
             this.serverAddress = serverAddress;
             if (httpClient == null)
             {
-                // trust all certificate
-                var HttpHandler = new HttpClientHandler
+                if (defaultHttpClient == null)
                 {
-                    ServerCertificateCustomValidationCallback = (a, b, c, d) => true
-                };
-                httpClient = new System.Net.Http.HttpClient(HttpHandler);
+                    // trust all certificate
+                    var HttpHandler = new HttpClientHandler
+                    {
+                        ServerCertificateCustomValidationCallback = (a, b, c, d) => true
+                    };
+                    defaultHttpClient = new System.Net.Http.HttpClient(HttpHandler);
+                }
+                httpClient = defaultHttpClient;
             }
             this.httpClient = httpClient;
 
@@ -161,7 +166,7 @@ namespace Vitorm.ElasticSearch
             Func<Expression, Type, object> QueryExecutor = (expression, type) =>
             {
                 // #1 convert to ExpressionNode
-                var isArgument = QueryableBuilder.QueryTypeNameCompare(dbContextId);
+                var isArgument = QueryableBuilder.CompareQueryByName(dbContextId);
                 ExpressionNode node = convertService.ConvertToData(expression, autoReduce: true, isArgument: isArgument);
                 //var strNode = Json.Serialize(node);
 
