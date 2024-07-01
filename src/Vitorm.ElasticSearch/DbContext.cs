@@ -29,25 +29,36 @@ namespace Vitorm.ElasticSearch
 
         protected System.Net.Http.HttpClient httpClient = null;
         protected static System.Net.Http.HttpClient defaultHttpClient = null;
-        public DbContext(string serverAddress, System.Net.Http.HttpClient httpClient = null)
+        public DbContext(string serverAddress, System.Net.Http.HttpClient httpClient = null, int? commandTimeout = null)
         {
             this.serverAddress = serverAddress;
             if (httpClient == null)
             {
                 if (defaultHttpClient == null)
                 {
-                    // trust all certificate
-                    var HttpHandler = new HttpClientHandler
-                    {
-                        ServerCertificateCustomValidationCallback = (a, b, c, d) => true
-                    };
-                    defaultHttpClient = new System.Net.Http.HttpClient(HttpHandler);
+                    defaultHttpClient = CreatHttpClient();
                 }
-                httpClient = defaultHttpClient;
+                if (commandTimeout.HasValue && commandTimeout.Value != (int)defaultHttpClient.Timeout.TotalSeconds)
+                    httpClient = CreatHttpClient(commandTimeout.Value);
+                else
+                    httpClient = defaultHttpClient;
             }
             this.httpClient = httpClient;
 
             this.GetEntityIndex = GetDefaultIndex;
+        }
+
+        HttpClient CreatHttpClient(int? commandTimeout = null)
+        {
+            // trust all certificate
+            var HttpHandler = new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = (a, b, c, d) => true
+            };
+            var httpClient = new System.Net.Http.HttpClient(HttpHandler);
+            if (commandTimeout.HasValue) httpClient.Timeout = TimeSpan.FromSeconds(commandTimeout.Value);
+
+            return httpClient;
         }
 
 
