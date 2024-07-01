@@ -97,7 +97,7 @@ namespace Vitorm.ElasticSearch
 
 
         #region #1.2 Schema :  Drop
-        public virtual void Drop<Entity>()
+        public override void Drop<Entity>()
         {
             var indexName = GetIndex<Entity>();
             Drop(indexName);

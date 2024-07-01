@@ -33,7 +33,7 @@ namespace Vitorm.MsTest
 
     public class DataSource
     {
-        public static void WaitForUpdate() => Thread.Sleep(1000);
+        public static void WaitForUpdate() => Thread.Sleep(2000);
 
         static string connectionString = Appsettings.json.GetStringByPath("Vitorm.ElasticSearch.connectionString");
 
