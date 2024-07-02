@@ -1,17 +1,17 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-
-using Vit.Linq.ExpressionTree.ComponentModel;
-using Vit.Linq;
-using Vit.Core.Module.Serialization;
 using System.Net.Http;
-using Vitorm.StreamQuery;
-using Vitorm.Entity;
+
+using Vit.Core.Module.Serialization;
 using Vit.Extensions;
-using System.Collections;
-using Vit.Extensions.Vitorm_Extensions;
+using Vit.Linq;
+using Vit.Linq.ExpressionTree.ComponentModel;
+
+using Vitorm.Entity;
+using Vitorm.StreamQuery;
 
 namespace Vitorm.ElasticSearch
 {
