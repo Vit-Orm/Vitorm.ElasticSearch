@@ -5,7 +5,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
-using Vit.Extensions.Linq_Extensions;
+using Vit.Linq;
 
 using Vitorm.Entity;
 
