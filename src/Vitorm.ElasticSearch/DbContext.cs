@@ -18,7 +18,6 @@ namespace Vitorm.ElasticSearch
     public partial class DbContext : Vitorm.DbContext
     {
         // https://www.elastic.co/guide/en/elasticsearch/reference/7.17/docs-bulk.html
-
         // https://elasticsearch.bookhub.tech/rest_apis/document_apis/reindex
 
 
@@ -27,25 +26,47 @@ namespace Vitorm.ElasticSearch
         /// </summary>
         public string serverAddress { get; set; }
 
+        /// <summary>
+        /// es address, example:"http://192.168.20.20:9200"
+        /// </summary>
+        protected string _readOnlyServerAddress { get; set; }
+
+
+        /// <summary>
+        /// es address, example:"http://192.168.20.20:9200"
+        /// </summary>
+        public string readOnlyServerAddress => _readOnlyServerAddress ?? serverAddress;
+
+
         protected System.Net.Http.HttpClient httpClient = null;
         protected static System.Net.Http.HttpClient defaultHttpClient = null;
+
         public DbContext(string serverAddress, System.Net.Http.HttpClient httpClient = null, int? commandTimeout = null)
+            : this(new DbConfig(connectionString: serverAddress, commandTimeout: commandTimeout), httpClient)
         {
-            this.serverAddress = serverAddress;
+        }
+
+        public DbContext(DbConfig dbConfig, System.Net.Http.HttpClient httpClient = null)
+        {
+            this.serverAddress = dbConfig.connectionString;
+            this._readOnlyServerAddress = dbConfig.readOnlyConnectionString;
+
             if (httpClient == null)
             {
                 if (defaultHttpClient == null)
                 {
                     defaultHttpClient = CreatHttpClient();
                 }
-                if (commandTimeout.HasValue && commandTimeout.Value != (int)defaultHttpClient.Timeout.TotalSeconds)
-                    httpClient = CreatHttpClient(commandTimeout.Value);
+                if (dbConfig.commandTimeout.HasValue && dbConfig.commandTimeout.Value != (int)defaultHttpClient.Timeout.TotalSeconds)
+                    httpClient = CreatHttpClient(dbConfig.commandTimeout.Value);
                 else
                     httpClient = defaultHttpClient;
             }
             this.httpClient = httpClient;
 
             this.GetEntityIndex = GetDefaultIndex;
+
+            dbGroupName = "ES_DbSet_" + GetHashCode();
         }
 
         HttpClient CreatHttpClient(int? commandTimeout = null)
@@ -173,12 +194,13 @@ namespace Vitorm.ElasticSearch
         }
         public virtual IQueryable<Entity> Query<Entity>(string indexName)
         {
-            var dbContextId = "ES_DbSet_" + GetHashCode();
-            Func<Expression, Type, object> QueryExecutor = (expression, type) =>
+            return QueryableBuilder.Build<Entity>(QueryExecutor, dbGroupName);
+
+            #region QueryExecutor
+            object QueryExecutor(Expression expression, Type type)
             {
                 // #1 convert to ExpressionNode
-                var isArgument = QueryableBuilder.CompareQueryByName(dbContextId);
-                ExpressionNode node = convertService.ConvertToData(expression, autoReduce: true, isArgument: isArgument);
+                ExpressionNode node = convertService.ConvertToData(expression, autoReduce: true, isArgument: QueryIsFromSameDb);
                 //var strNode = Json.Serialize(node);
 
                 // #2 convert to Stream
@@ -247,8 +269,17 @@ namespace Vitorm.ElasticSearch
                         }
                 }
                 throw new NotSupportedException("not supported query type: " + combinedStream.method);
-            };
-            return QueryableBuilder.Build<Entity>(QueryExecutor, dbContextId);
+            }
+
+            #endregion
+        }
+        /// <summary>
+        /// to identify whether contexts are from the same database
+        /// </summary>
+        protected string dbGroupName { get; set; }
+        protected bool QueryIsFromSameDb(object query, Type elementType)
+        {
+            return dbGroupName == QueryableBuilder.GetQueryConfig(query as IQueryable) as string;
         }
 
 

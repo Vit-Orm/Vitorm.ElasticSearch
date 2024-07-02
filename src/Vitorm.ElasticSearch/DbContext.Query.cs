@@ -13,7 +13,6 @@ namespace Vitorm.ElasticSearch
     public partial class DbContext
     {
 
-
         protected virtual Delegate BuildSelect(Type entityType, ExpressionNode selectedFields, string entityParameterName)
         {
             // Compile Lambda
@@ -27,7 +26,7 @@ namespace Vitorm.ElasticSearch
 
         protected virtual SearchResponse<Model> Query<Model>(object queryPayload, string indexName)
         {
-            var searchUrl = $"{serverAddress}/{indexName}/_search";
+            var searchUrl = $"{readOnlyServerAddress}/{indexName}/_search";
             var strQuery = Serialize(queryPayload);
             var searchContent = new StringContent(strQuery, Encoding.UTF8, "application/json");
             var httpResponse = httpClient.PostAsync(searchUrl, searchContent).Result;

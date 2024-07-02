@@ -119,7 +119,7 @@ namespace Vitorm.ElasticSearch
         }
         public virtual async Task<Entity> GetAsync<Entity>(object keyValue, string indexName)
         {
-            var actionUrl = $"{serverAddress}/{indexName}/_doc/" + keyValue;
+            var actionUrl = $"{readOnlyServerAddress}/{indexName}/_doc/" + keyValue;
 
             var httpResponse = await httpClient.GetAsync(actionUrl);
 
