@@ -149,15 +149,14 @@ namespace Vitorm.ElasticSearch
 
 
                         //  { "range": { "age": { "gte": 10, "lte": 20 } } }
-                        string optType;
-                        switch (operation)
+                        string optType = operation switch
                         {
-                            case NodeType.GreaterThan: optType = "gt"; break;
-                            case NodeType.GreaterThanOrEqual: optType = "gte"; break;
-                            case NodeType.LessThan: optType = "lt"; break;
-                            case NodeType.LessThanOrEqual: optType = "lte"; break;
-                            default: throw new NotSupportedException("not supported operator:" + operation);
-                        }
+                            NodeType.GreaterThan => "gt",
+                            NodeType.GreaterThanOrEqual => "gte",
+                            NodeType.LessThan => "lt",
+                            NodeType.LessThanOrEqual => "lte",
+                            _ => throw new NotSupportedException("not supported operator:" + operation),
+                        };
                         return new { range = new Dictionary<string, object> { [field] = new Dictionary<string, object> { [optType] = value } } };
                     }
                 case NodeType.MethodCall:

@@ -53,10 +53,7 @@ namespace Vitorm.ElasticSearch
 
             if (httpClient == null)
             {
-                if (defaultHttpClient == null)
-                {
-                    defaultHttpClient = CreatHttpClient();
-                }
+                defaultHttpClient ??= CreatHttpClient();
                 if (dbConfig.commandTimeout.HasValue && dbConfig.commandTimeout.Value != (int)defaultHttpClient.Timeout.TotalSeconds)
                     httpClient = CreatHttpClient(dbConfig.commandTimeout.Value);
                 else
@@ -209,11 +206,8 @@ namespace Vitorm.ElasticSearch
 
                 // #3.3 Query
                 // #3.3.1
-                var combinedStream = stream as CombinedStream;
-                if (combinedStream == null) combinedStream = new CombinedStream("tmp") { source = stream };
-                SourceStream source = combinedStream.source as SourceStream;
-
-                if (source == null) throw new NotSupportedException("not supported nested query");
+                if (stream is not CombinedStream combinedStream) combinedStream = new CombinedStream("tmp") { source = stream };
+                SourceStream source = combinedStream.source as SourceStream ?? throw new NotSupportedException("not supported nested query");
                 if (combinedStream.isGroupedStream) throw new NotSupportedException("not supported group query");
                 if (combinedStream.joins?.Any() == true) throw new NotSupportedException("not supported join query");
                 if (combinedStream.distinct != null) throw new NotSupportedException("not supported distinct query");
