@@ -26,7 +26,11 @@
 
     <ItemGroup>
         <PackageReference Include="Vit.Core" Version="2.2.0" />
-        <PackageReference Include="Vitorm" Version="1.1.0-preview-ki1" />
+        <!--<PackageReference Include="Vitorm" Version="1.1.0-preview-ki1" />-->
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\Vitorm\src\Vitorm\Vitorm.csproj" />
     </ItemGroup>
 
 
