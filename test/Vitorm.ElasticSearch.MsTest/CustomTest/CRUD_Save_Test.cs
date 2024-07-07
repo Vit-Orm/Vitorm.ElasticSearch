@@ -37,7 +37,7 @@ namespace Vitorm.MsTest.CustomTest
                 dbContext.SaveRange(users);
             }
 
-            Thread.Sleep(1000);
+            DataSource.WaitForUpdate();
 
             // assert
             {

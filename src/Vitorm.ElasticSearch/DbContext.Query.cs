@@ -13,7 +13,6 @@ namespace Vitorm.ElasticSearch
     public partial class DbContext
     {
 
-
         protected virtual Delegate BuildSelect(Type entityType, ExpressionNode selectedFields, string entityParameterName)
         {
             // Compile Lambda
@@ -27,7 +26,7 @@ namespace Vitorm.ElasticSearch
 
         protected virtual SearchResponse<Model> Query<Model>(object queryPayload, string indexName)
         {
-            var searchUrl = $"{serverAddress}/{indexName}/_search";
+            var searchUrl = $"{readOnlyServerAddress}/{indexName}/_search";
             var strQuery = Serialize(queryPayload);
             var searchContent = new StringContent(strQuery, Encoding.UTF8, "application/json");
             var httpResponse = httpClient.PostAsync(searchUrl, searchContent).Result;
@@ -77,13 +76,13 @@ namespace Vitorm.ElasticSearch
             return data?.value;
         }
         static readonly Dictionary<string, string> conditionMap
-            = new Dictionary<string, string> { [NodeType.And] = "must", [NodeType.Or] = "should", [NodeType.Not] = "must_not" };
+            = new Dictionary<string, string> { [NodeType.AndAlso] = "must", [NodeType.OrElse] = "should", [NodeType.Not] = "must_not" };
         public virtual object ConvertCondition(ExpressionNode data)
         {
             switch (data.nodeType)
             {
-                case NodeType.And:
-                case NodeType.Or:
+                case NodeType.AndAlso:
+                case NodeType.OrElse:
                     {
                         ExpressionNode_Binary binary = data;
                         var condition = conditionMap[data.nodeType];
@@ -150,15 +149,14 @@ namespace Vitorm.ElasticSearch
 
 
                         //  { "range": { "age": { "gte": 10, "lte": 20 } } }
-                        string optType;
-                        switch (operation)
+                        string optType = operation switch
                         {
-                            case NodeType.GreaterThan: optType = "gt"; break;
-                            case NodeType.GreaterThanOrEqual: optType = "gte"; break;
-                            case NodeType.LessThan: optType = "lt"; break;
-                            case NodeType.LessThanOrEqual: optType = "lte"; break;
-                            default: throw new NotSupportedException("not supported operator:" + operation);
-                        }
+                            NodeType.GreaterThan => "gt",
+                            NodeType.GreaterThanOrEqual => "gte",
+                            NodeType.LessThan => "lt",
+                            NodeType.LessThanOrEqual => "lte",
+                            _ => throw new NotSupportedException("not supported operator:" + operation),
+                        };
                         return new { range = new Dictionary<string, object> { [field] = new Dictionary<string, object> { [optType] = value } } };
                     }
                 case NodeType.MethodCall:

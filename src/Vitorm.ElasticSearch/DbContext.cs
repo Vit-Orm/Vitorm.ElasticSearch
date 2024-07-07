@@ -1,24 +1,23 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-
-using Vit.Linq.ExpressionTree.ComponentModel;
-using Vit.Linq;
-using Vit.Core.Module.Serialization;
 using System.Net.Http;
-using Vitorm.StreamQuery;
-using Vitorm.Entity;
+
+using Vit.Core.Module.Serialization;
 using Vit.Extensions;
-using System.Collections;
-using Vit.Extensions.Vitorm_Extensions;
+using Vit.Linq;
+using Vit.Linq.ExpressionTree.ComponentModel;
+
+using Vitorm.Entity;
+using Vitorm.StreamQuery;
 
 namespace Vitorm.ElasticSearch
 {
     public partial class DbContext : Vitorm.DbContext
     {
         // https://www.elastic.co/guide/en/elasticsearch/reference/7.17/docs-bulk.html
-
         // https://elasticsearch.bookhub.tech/rest_apis/document_apis/reindex
 
 
@@ -27,22 +26,57 @@ namespace Vitorm.ElasticSearch
         /// </summary>
         public string serverAddress { get; set; }
 
-        private System.Net.Http.HttpClient httpClient = null;
-        public DbContext(string serverAddress, System.Net.Http.HttpClient httpClient = null)
+        /// <summary>
+        /// es address, example:"http://192.168.20.20:9200"
+        /// </summary>
+        protected string _readOnlyServerAddress { get; set; }
+
+
+        /// <summary>
+        /// es address, example:"http://192.168.20.20:9200"
+        /// </summary>
+        public string readOnlyServerAddress => _readOnlyServerAddress ?? serverAddress;
+
+
+        protected System.Net.Http.HttpClient httpClient = null;
+        protected static System.Net.Http.HttpClient defaultHttpClient = null;
+
+        public DbContext(string serverAddress, System.Net.Http.HttpClient httpClient = null, int? commandTimeout = null)
+            : this(new DbConfig(connectionString: serverAddress, commandTimeout: commandTimeout), httpClient)
         {
-            this.serverAddress = serverAddress;
+        }
+
+        public DbContext(DbConfig dbConfig, System.Net.Http.HttpClient httpClient = null)
+        {
+            this.serverAddress = dbConfig.connectionString;
+            this._readOnlyServerAddress = dbConfig.readOnlyConnectionString;
+
             if (httpClient == null)
             {
-                // trust all certificate
-                var HttpHandler = new HttpClientHandler
-                {
-                    ServerCertificateCustomValidationCallback = (a, b, c, d) => true
-                };
-                httpClient = new System.Net.Http.HttpClient(HttpHandler);
+                defaultHttpClient ??= CreatHttpClient();
+                if (dbConfig.commandTimeout.HasValue && dbConfig.commandTimeout.Value != (int)defaultHttpClient.Timeout.TotalSeconds)
+                    httpClient = CreatHttpClient(dbConfig.commandTimeout.Value);
+                else
+                    httpClient = defaultHttpClient;
             }
             this.httpClient = httpClient;
 
             this.GetEntityIndex = GetDefaultIndex;
+
+            dbGroupName = "ES_DbSet_" + GetHashCode();
+        }
+
+        HttpClient CreatHttpClient(int? commandTimeout = null)
+        {
+            // trust all certificate
+            var HttpHandler = new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = (a, b, c, d) => true
+            };
+            var httpClient = new System.Net.Http.HttpClient(HttpHandler);
+            if (commandTimeout.HasValue) httpClient.Timeout = TimeSpan.FromSeconds(commandTimeout.Value);
+
+            return httpClient;
         }
 
 
@@ -92,7 +126,7 @@ namespace Vitorm.ElasticSearch
 
 
         #region #1.2 Schema :  Drop
-        public virtual void Drop<Entity>()
+        public override void Drop<Entity>()
         {
             var indexName = GetIndex<Entity>();
             Drop(indexName);
@@ -157,12 +191,13 @@ namespace Vitorm.ElasticSearch
         }
         public virtual IQueryable<Entity> Query<Entity>(string indexName)
         {
-            var dbContextId = "ES_DbSet_" + GetHashCode();
-            Func<Expression, Type, object> QueryExecutor = (expression, type) =>
+            return QueryableBuilder.Build<Entity>(QueryExecutor, dbGroupName);
+
+            #region QueryExecutor
+            object QueryExecutor(Expression expression, Type type)
             {
                 // #1 convert to ExpressionNode
-                var isArgument = QueryableBuilder.QueryTypeNameCompare(dbContextId);
-                ExpressionNode node = convertService.ConvertToData(expression, autoReduce: true, isArgument: isArgument);
+                ExpressionNode node = convertService.ConvertToData(expression, autoReduce: true, isArgument: QueryIsFromSameDb);
                 //var strNode = Json.Serialize(node);
 
                 // #2 convert to Stream
@@ -171,11 +206,8 @@ namespace Vitorm.ElasticSearch
 
                 // #3.3 Query
                 // #3.3.1
-                var combinedStream = stream as CombinedStream;
-                if (combinedStream == null) combinedStream = new CombinedStream("tmp") { source = stream };
-                SourceStream source = combinedStream.source as SourceStream;
-
-                if (source == null) throw new NotSupportedException("not supported nested query");
+                if (stream is not CombinedStream combinedStream) combinedStream = new CombinedStream("tmp") { source = stream };
+                SourceStream source = combinedStream.source as SourceStream ?? throw new NotSupportedException("not supported nested query");
                 if (combinedStream.isGroupedStream) throw new NotSupportedException("not supported group query");
                 if (combinedStream.joins?.Any() == true) throw new NotSupportedException("not supported join query");
                 if (combinedStream.distinct != null) throw new NotSupportedException("not supported distinct query");
@@ -231,8 +263,17 @@ namespace Vitorm.ElasticSearch
                         }
                 }
                 throw new NotSupportedException("not supported query type: " + combinedStream.method);
-            };
-            return QueryableBuilder.Build<Entity>(QueryExecutor, dbContextId);
+            }
+
+            #endregion
+        }
+        /// <summary>
+        /// to identify whether contexts are from the same database
+        /// </summary>
+        protected string dbGroupName { get; set; }
+        protected bool QueryIsFromSameDb(object query, Type elementType)
+        {
+            return dbGroupName == QueryableBuilder.GetQueryConfig(query as IQueryable) as string;
         }
 
 

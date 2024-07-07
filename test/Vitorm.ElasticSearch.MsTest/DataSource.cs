@@ -9,7 +9,7 @@ namespace Vitorm.MsTest
         [System.Text.Json.Serialization.JsonIgnore]
         [Newtonsoft.Json.JsonIgnore]
         public string key { get; set; }
- 
+
         public int id { get; set; }
         public string name { get; set; }
         public DateTime? birth { get; set; }
@@ -21,11 +21,11 @@ namespace Vitorm.MsTest
         public User father { get; set; }
         public User mother { get; set; }
 
-        public static User NewUser(int id) => new User { key = id.ToString(), id = id, name = "testUser" + id };
+        public static User NewUser(int id, bool forAdd = false) => new User { key = id.ToString(), id = id, name = "testUser" + id };
 
-        public static List<User> NewUsers(int startId, int count = 1)
+        public static List<User> NewUsers(int startId, int count = 1, bool forAdd = false)
         {
-            return Enumerable.Range(startId, count).Select(NewUser).ToList();
+            return Enumerable.Range(startId, count).Select(id => NewUser(id, forAdd)).ToList();
         }
 
     }
@@ -33,7 +33,9 @@ namespace Vitorm.MsTest
 
     public class DataSource
     {
-        static string connectionString = Appsettings.json.GetStringByPath("App.Db.ConnectionString");
+        public static void WaitForUpdate() => Thread.Sleep(2000);
+
+        static string connectionString = Appsettings.json.GetStringByPath("Vitorm.ElasticSearch.connectionString");
 
 
         static int dbIndexCount = 0;

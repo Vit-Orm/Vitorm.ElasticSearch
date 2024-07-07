@@ -1,8 +1,6 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using System.Data;
 
-using System.Data;
-
-using Vit.Extensions.Vitorm_Extensions;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Vitorm.MsTest.CustomTest
 {
