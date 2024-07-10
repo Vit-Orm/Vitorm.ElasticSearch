@@ -112,13 +112,13 @@ namespace Vitorm.ElasticSearch
 
         #region #1.1 Schema :  Create
 
-        public override void Create<Entity>()
+        public override void TryCreateTable<Entity>()
         {
             var indexName = GetIndex<Entity>();
-            Create(indexName);
+            TryCreateTable(indexName);
         }
 
-        public virtual string Create(string indexName, bool throwErrorIfFailed = false)
+        public virtual string TryCreateTable(string indexName, bool throwErrorIfFailed = false)
         {
             return CreateAsync(indexName, throwErrorIfFailed).Result;
         }
@@ -126,13 +126,13 @@ namespace Vitorm.ElasticSearch
 
 
         #region #1.2 Schema :  Drop
-        public override void Drop<Entity>()
+        public override void TryDropTable<Entity>()
         {
             var indexName = GetIndex<Entity>();
-            Drop(indexName);
+            TryDropTable(indexName);
         }
 
-        public virtual void Drop(string indexName)
+        public virtual void TryDropTable(string indexName)
         {
             DropAsync(indexName).Wait();
         }

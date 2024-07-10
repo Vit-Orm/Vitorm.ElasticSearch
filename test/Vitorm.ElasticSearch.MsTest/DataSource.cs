@@ -88,8 +88,8 @@ namespace Vitorm.MsTest
             });
 
 
-            dbContext.Drop<User>();
-            dbContext.Create<User>();
+            dbContext.TryDropTable<User>();
+            dbContext.TryCreateTable<User>();
             dbContext.AddRange(users);
 
             WaitForUpdate();
