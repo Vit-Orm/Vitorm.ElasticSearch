@@ -42,9 +42,11 @@ namespace Vitorm.MsTest
         public static Vitorm.ElasticSearch.DbContext CreateDbContextForWriting()
         {
             var dbContext = new Vitorm.ElasticSearch.DbContext(connectionString);
-            dbIndexCount++;
-            var dbIndexName = "user" + dbIndexCount;
-            dbContext.GetEntityIndex = (_) => dbIndexName;
+
+            var dbSet = dbContext.DbSet<User>();
+
+            dbSet.ChangeTable(dbSet.entityDescriptor.tableName + "2");
+
             InitDbContext(dbContext);
             return dbContext;
         }
@@ -90,7 +92,7 @@ namespace Vitorm.MsTest
             dbContext.Create<User>();
             dbContext.AddRange(users);
 
-            Thread.Sleep(2000);
+            WaitForUpdate();
         }
     }
 }
