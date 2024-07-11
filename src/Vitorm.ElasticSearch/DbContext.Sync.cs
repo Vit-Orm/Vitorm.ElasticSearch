@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Threading;
 
 using Vit.Linq;
 using Vit.Linq.ExpressionTree.ComponentModel;
@@ -146,7 +144,7 @@ namespace Vitorm.ElasticSearch
                 }
 
                 var searchResult = Query<Entity>(queryPayload, indexName);
-          
+
 
                 var entityDescriptor = GetEntityDescriptor(typeof(Entity));
                 var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(entityDescriptor));
@@ -160,18 +158,18 @@ namespace Vitorm.ElasticSearch
                 // #3.3.2 execute and read result
                 switch (combinedStream.method)
                 {
-                    case nameof(Queryable.FirstOrDefault): 
-                        { 
+                    case nameof(Queryable.FirstOrDefault):
+                        {
                             var entity = entities.FirstOrDefault();
                             return select == null ? entity : select.DynamicInvoke(entity);
                         }
-                    case nameof(Queryable.First): 
-                        { 
-                            var entity = entities.First(); 
-                            return select == null ? entity : select.DynamicInvoke(entity); 
-                        }               
-                    case nameof(Queryable.LastOrDefault): 
-                        { 
+                    case nameof(Queryable.First):
+                        {
+                            var entity = entities.First();
+                            return select == null ? entity : select.DynamicInvoke(entity);
+                        }
+                    case nameof(Queryable.LastOrDefault):
+                        {
                             var entity = entities.LastOrDefault();
                             return select == null ? entity : select.DynamicInvoke(entity);
                         }

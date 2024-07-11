@@ -37,8 +37,6 @@ namespace Vitorm.MsTest
 
         static string connectionString = Appsettings.json.GetStringByPath("Vitorm.ElasticSearch.connectionString");
 
-
-        static int dbIndexCount = 0;
         public static Vitorm.ElasticSearch.DbContext CreateDbContextForWriting()
         {
             var dbContext = new Vitorm.ElasticSearch.DbContext(connectionString);
