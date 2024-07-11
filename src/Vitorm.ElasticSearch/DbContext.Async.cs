@@ -13,14 +13,14 @@ namespace Vitorm.ElasticSearch
     public partial class DbContext
     {
 
-        #region #1.1 Schema :  Create
+        #region #1.1 Schema :  TryCreateTable
 
-        public virtual async Task CreateAsync<Entity>()
+        public virtual async Task TryCreateTableAsync<Entity>()
         {
             var indexName = GetIndex<Entity>();
-            await CreateAsync(indexName);
+            await TryCreateTableAsync(indexName);
         }
-        public virtual async Task<string> CreateAsync(string indexName, bool throwErrorIfFailed = false)
+        public virtual async Task<string> TryCreateTableAsync(string indexName, bool throwErrorIfFailed = false)
         {
             var url = $"{serverAddress}/{indexName}";
             var strPayload = "{\"mappings\":{\"properties\":{\"@timestamp\":{\"type\":\"date\"},\"time\":{\"type\":\"date\"}}}}";
@@ -34,14 +34,14 @@ namespace Vitorm.ElasticSearch
         }
         #endregion
 
-        #region #1.2 Schema :  Drop
-        public virtual async Task DropAsync<Entity>()
+        #region #1.2 Schema :  TryDropTable
+        public virtual async Task TryDropTableAsync<Entity>()
         {
             var indexName = GetIndex<Entity>();
-            await DropAsync(indexName);
+            await TryDropTableAsync(indexName);
         }
 
-        public virtual async Task DropAsync(string indexName)
+        public virtual async Task TryDropTableAsync(string indexName)
         {
             var url = $"{serverAddress}/{indexName}";
             var httpResponse = await httpClient.DeleteAsync(url);
