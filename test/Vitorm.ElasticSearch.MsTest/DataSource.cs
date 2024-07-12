@@ -37,14 +37,14 @@ namespace Vitorm.MsTest
 
         static string connectionString = Appsettings.json.GetStringByPath("Vitorm.ElasticSearch.connectionString");
 
-
-        static int dbIndexCount = 0;
         public static Vitorm.ElasticSearch.DbContext CreateDbContextForWriting()
         {
             var dbContext = new Vitorm.ElasticSearch.DbContext(connectionString);
-            dbIndexCount++;
-            var dbIndexName = "user" + dbIndexCount;
-            dbContext.GetEntityIndex = (_) => dbIndexName;
+
+            var dbSet = dbContext.DbSet<User>();
+
+            dbSet.ChangeTable(dbSet.entityDescriptor.tableName + "2");
+
             InitDbContext(dbContext);
             return dbContext;
         }
@@ -86,11 +86,11 @@ namespace Vitorm.MsTest
             });
 
 
-            dbContext.Drop<User>();
-            dbContext.Create<User>();
+            dbContext.TryDropTable<User>();
+            dbContext.TryCreateTable<User>();
             dbContext.AddRange(users);
 
-            Thread.Sleep(2000);
+            WaitForUpdate();
         }
     }
 }

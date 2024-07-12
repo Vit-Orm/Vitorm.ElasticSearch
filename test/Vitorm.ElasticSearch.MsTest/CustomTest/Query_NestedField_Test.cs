@@ -8,7 +8,7 @@ namespace Vitorm.MsTest.CustomTest
     [TestClass]
     public class Query_NestedField_Test
     {
- 
+
 
         [TestMethod]
         public void Test_Query()
