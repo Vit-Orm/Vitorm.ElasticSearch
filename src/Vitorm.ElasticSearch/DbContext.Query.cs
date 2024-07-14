@@ -20,7 +20,7 @@ namespace Vitorm.ElasticSearch
             var lambdaNode = ExpressionNode.Lambda(new[] { entityParameterName }, selectedFields);
             //var strNode = Json.Serialize(lambdaNode);
 
-            var lambdaExp = convertService.ToLambdaExpression(lambdaNode, new[] { entityType });
+            var lambdaExp = convertService.ConvertToCode_LambdaExpression(lambdaNode, new[] { entityType });
             return lambdaExp.Compile();
         }
 
