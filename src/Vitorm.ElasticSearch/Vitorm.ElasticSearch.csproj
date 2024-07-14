@@ -13,14 +13,20 @@
     <PropertyGroup>
         <Authors>Lith</Authors>
         <Description>orm for ElasticSearch</Description>
-        <PackageProjectUrl>https://github.com/VitormLib/Vitorm.ElasticSearch</PackageProjectUrl>
         <PackageIcon>vitorm_logo_v1.png</PackageIcon>
+        <RepositoryUrl>https://github.com/VitormLib/Vitorm.ElasticSearch</RepositoryUrl>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageTags>orm vitorm database ElasticSearch</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>
         <None Include="..\..\doc\vitorm_logo_v1.png">
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
+        </None>
+        <None Include="..\..\README.md">
+          <Pack>True</Pack>
+          <PackagePath>\</PackagePath>
         </None>
     </ItemGroup>
 

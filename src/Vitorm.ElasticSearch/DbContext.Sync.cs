@@ -102,7 +102,7 @@ namespace Vitorm.ElasticSearch
             object QueryExecutor(Expression expression, Type expressionResultType)
             {
                 // #1 convert to ExpressionNode
-                ExpressionNode node = convertService.ConvertToData_LambdaNode(expression, autoReduce: true, isArgument: QueryIsFromSameDb);
+                ExpressionNode_Lambda node = convertService.ConvertToData_LambdaNode(expression, autoReduce: true, isArgument: QueryIsFromSameDb);
                 //var strNode = Json.Serialize(node);
 
                 // #2 convert to Stream
