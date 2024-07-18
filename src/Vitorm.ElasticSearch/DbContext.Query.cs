@@ -79,7 +79,7 @@ namespace Vitorm.ElasticSearch
                     var queryArg = (combinedStream.orders, combinedStream.skip, combinedStream.take);
                     (combinedStream.orders, combinedStream.skip, combinedStream.take) = (null, null, 0);
 
-                    var count = Query<Entity>(BuildElasticQueryPayload(combinedStream), indexName)?.hits?.total?.value ?? 0;
+                    var count = Query<Entity>(BuildElasticSearchQuery(combinedStream), indexName)?.hits?.total?.value ?? 0;
 
                     if (count > 0 && combinedStream.method == nameof(Queryable.Count))
                     {
@@ -93,7 +93,7 @@ namespace Vitorm.ElasticSearch
                 }
 
 
-                var queryPayload = BuildElasticQueryPayload(combinedStream);
+                var queryPayload = BuildElasticSearchQuery(combinedStream);
 
                 if (combinedStream.method == nameof(Orm_Extensions.ToExecuteString))
                 {
