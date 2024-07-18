@@ -1,14 +1,6 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
-
-using Vit.Linq;
-using Vit.Linq.ExpressionTree.ComponentModel;
-
-using Vitorm.Entity;
-using Vitorm.StreamQuery;
 
 namespace Vitorm.ElasticSearch
 {
@@ -31,7 +23,7 @@ namespace Vitorm.ElasticSearch
 
         #region #1.1 Schema :  TryCreateTable
         public override void TryCreateTable<Entity>()
-        { 
+        {
             TryCreateTableAsync<Entity>().Wait();
         }
 
