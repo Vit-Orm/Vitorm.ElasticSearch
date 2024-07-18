@@ -21,6 +21,10 @@ namespace Vitorm.MsTest
         public User father { get; set; }
         public User mother { get; set; }
 
+        public List<User> children { get; set; }
+
+
+        public string remarks { get; set; }
         public static User NewUser(int id, bool forAdd = false) => new User { key = id.ToString(), id = id, name = "testUser" + id };
 
         public static List<User> NewUsers(int startId, int count = 1, bool forAdd = false)
@@ -83,6 +87,13 @@ namespace Vitorm.MsTest
             {
                 user.father = users.FirstOrDefault(m => m.id == user.fatherId);
                 user.mother = users.FirstOrDefault(m => m.id == user.motherId);
+
+                user.remarks = $"Hello there, I'm {user.name} , My id is {user.id}, my father is {user.father?.name}, my mother is {user.mother?.name} .";
+            });
+
+            users.ForEach(user =>
+            {
+                user.children = users.Where(child => child.father?.id == user.id || child.mother?.id == user.id).Select(child => new User { id = child.id, name = child.name, remarks = child.remarks }).ToList();
             });
 
 

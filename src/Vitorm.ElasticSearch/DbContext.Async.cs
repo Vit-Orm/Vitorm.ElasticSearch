@@ -13,6 +13,25 @@ namespace Vitorm.ElasticSearch
     public partial class DbContext
     {
 
+
+        #region #1.0 Schema : Get Schema
+        public virtual async Task<string> GetMappingAsync<Entity>()
+        {
+            var indexName = GetIndex<Entity>();
+            return await GetMappingAsync(indexName);
+        }
+
+        public virtual async Task<string> GetMappingAsync(string indexName)
+        {
+            var searchUrl = $"{readOnlyServerAddress}/{indexName}/_mapping";
+
+            var httpResponse = await httpClient.GetAsync(searchUrl);
+            var strResponse = await httpResponse.Content.ReadAsStringAsync();
+            if (!httpResponse.IsSuccessStatusCode) throw new Exception(strResponse);
+            return strResponse;
+        }
+        #endregion
+
         #region #1.1 Schema :  TryCreateTable
 
         public virtual async Task TryCreateTableAsync<Entity>()
@@ -201,7 +220,7 @@ namespace Vitorm.ElasticSearch
 
 
 
-        #region Save SaveRange
+        #region #4 Save SaveRange
         public virtual async Task<int> SaveAsync<Entity>(Entity entity)
         {
             var indexName = GetIndex<Entity>();
@@ -249,7 +268,7 @@ namespace Vitorm.ElasticSearch
 
 
 
-        #region #4 Delete : Delete DeleteRange DeleteByKey DeleteByKeys
+        #region #5 Delete : Delete DeleteRange DeleteByKey DeleteByKeys
 
         public virtual async Task<int> DeleteAsync<Entity>(Entity entity)
         {
