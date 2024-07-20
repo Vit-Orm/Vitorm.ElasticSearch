@@ -7,7 +7,7 @@ using Vit.Linq.ExpressionTree.ComponentModel;
 
 namespace Vitorm.ElasticSearch
 {
-    public class ElasticSearchQueryBuilder
+    public class ExpressionNodeBuilder
     {
         public virtual object ConvertToQuery(ExpressionNode data)
         {
@@ -187,7 +187,7 @@ namespace Vitorm.ElasticSearch
             throw new NotSupportedException("not supported nodeType: " + data.nodeType);
         }
 
-        public virtual object GetCondition_StringLike(string field, object value)
+        protected virtual object GetCondition_StringLike(string field, object value)
         {
             // { "wildcard": { "name.keyword": "*lith*" } }
             return new { wildcard = new Dictionary<string, object> { [field + ".keyword"] = value } };
@@ -263,6 +263,6 @@ namespace Vitorm.ElasticSearch
 
 
         public Dictionary<string, string> conditionMap
-          = new Dictionary<string, string> { [NodeType.AndAlso] = "must", [NodeType.OrElse] = "should", [NodeType.Not] = "must_not" };
+          = new Dictionary<string, string> { [NodeType.AndAlso] = "filter", [NodeType.OrElse] = "should", [NodeType.Not] = "must_not" };
     }
 }

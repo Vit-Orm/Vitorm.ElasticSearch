@@ -12,11 +12,11 @@
 
     <PropertyGroup>
         <Authors>Lith</Authors>
-        <Description>orm for ElasticSearch</Description>
-        <PackageProjectUrl>https://github.com/VitormLib/Vitorm.ElasticSearch</PackageProjectUrl>
+        <Description>Tool to convert FilterRule or ExpressionNode to ElasticSearch Query Request</Description>
+        <PackageProjectUrl>https://github.com/VitormLib/Vitorm.ElasticSearch/src/Vitorm.ElasticSearch.QueryBuilder</PackageProjectUrl>
         <PackageIcon>vitorm_logo_v1.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <PackageTags>orm vitorm database ElasticSearch</PackageTags>
+        <PackageTags>ElasticSearch QueryBulder</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>
@@ -24,20 +24,18 @@
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
         </None>
-        <None Include="..\..\README.md">
+        <None Update="README.md">
             <Pack>True</Pack>
             <PackagePath>\</PackagePath>
         </None>
     </ItemGroup>
 
-    <ItemGroup>
-        <PackageReference Include="Vit.Core" Version="2.2.0" />
-        <PackageReference Include="Vitorm" Version="2.0.1-preview" />
-    </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Vitorm.ElasticSearch.QueryBuilder\Vitorm.ElasticSearch.QueryBuilder.csproj" />
+        <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
+        <PackageReference Include="Vit.Linq" Version="3.0.1-preview" />
     </ItemGroup>
+
 
 
 </Project>

@@ -58,23 +58,27 @@ namespace Vitorm.ElasticSearch
             return strResponse;
         }
 
+        private static ExpressionNodeBuilder defaultExpressionNodeBuilder_;
+        public static ExpressionNodeBuilder defaultExpressionNodeBuilder
+        {
+            get => defaultExpressionNodeBuilder_ ?? (defaultExpressionNodeBuilder_ = new());
+            set => defaultExpressionNodeBuilder_ = value;
+        }
 
-        public static ElasticSearchQueryBuilder defaultQueryBuilder;
+        public ExpressionNodeBuilder expressionNodeBuilder = defaultExpressionNodeBuilder;
 
-        public ElasticSearchQueryBuilder queryBuilder = (defaultQueryBuilder ?? (defaultQueryBuilder = new()));
-
-        public virtual object BuildElasticSearchQuery(CombinedStream combinedStream)
+        public virtual object ConvertStreamToQuery(CombinedStream combinedStream)
         {
             var queryBody = new Dictionary<string, object>();
 
             // #1 where
-            queryBody["query"] = queryBuilder.ConvertToQuery(combinedStream.where);
+            queryBody["query"] = expressionNodeBuilder.ConvertToQuery(combinedStream.where);
 
             // #2 orders
             if (combinedStream.orders?.Any() == true)
             {
                 queryBody["sort"] = combinedStream.orders
-                                 .Select(order => new Dictionary<string, object> { [queryBuilder.GetNodeField(order.member)] = new { order = order.asc ? "asc" : "desc" } })
+                                 .Select(order => new Dictionary<string, object> { [expressionNodeBuilder.GetNodeField(order.member)] = new { order = order.asc ? "asc" : "desc" } })
                                  .ToList();
             }
 

@@ -74,12 +74,16 @@ namespace Vitorm.ElasticSearch
                 if (combinedStream.joins?.Any() == true) throw new NotSupportedException("not supported join query");
                 if (combinedStream.distinct != null) throw new NotSupportedException("not supported distinct query");
 
+
+                var queryPayload = ConvertStreamToQuery(combinedStream);
+
+
                 if (combinedStream.method == nameof(Queryable_Extensions.TotalCount) || combinedStream.method == nameof(Queryable.Count))
                 {
                     var queryArg = (combinedStream.orders, combinedStream.skip, combinedStream.take);
                     (combinedStream.orders, combinedStream.skip, combinedStream.take) = (null, null, 0);
 
-                    var count = Query<Entity>(BuildElasticSearchQuery(combinedStream), indexName)?.hits?.total?.value ?? 0;
+                    var count = Query<Entity>(queryPayload, indexName)?.hits?.total?.value ?? 0;
 
                     if (count > 0 && combinedStream.method == nameof(Queryable.Count))
                     {
@@ -92,8 +96,6 @@ namespace Vitorm.ElasticSearch
                     return count;
                 }
 
-
-                var queryPayload = BuildElasticSearchQuery(combinedStream);
 
                 if (combinedStream.method == nameof(Orm_Extensions.ToExecuteString))
                 {
