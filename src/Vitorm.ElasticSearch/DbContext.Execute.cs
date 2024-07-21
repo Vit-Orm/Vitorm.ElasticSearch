@@ -38,7 +38,6 @@ namespace Vitorm.ElasticSearch
 
         #region SingleActionAsync
 
-
         protected virtual async Task<Entity> SingleActionAsync<Entity>(IEntityDescriptor entityDescriptor, Entity entity, string indexName, string action)
         {
             var _id = entityDescriptor.key.GetValue(entity) as string;

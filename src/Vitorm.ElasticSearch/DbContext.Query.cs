@@ -1,9 +1,12 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Text;
+using System.Linq.Expressions;
+using System.Reflection;
+using System.Threading.Tasks;
 
+using Vit.Linq;
 using Vit.Linq.ExpressionTree.ComponentModel;
 
 using Vitorm.StreamQuery;
@@ -13,206 +16,205 @@ namespace Vitorm.ElasticSearch
     public partial class DbContext
     {
 
-        protected virtual Delegate BuildSelect(Type entityType, ExpressionNode selectedFields, string entityParameterName)
+        #region #2.2 Retrieve : Query
+        public override IQueryable<Entity> Query<Entity>()
         {
-            // Compile Lambda
-
-            var lambdaNode = ExpressionNode.Lambda(new[] { entityParameterName }, selectedFields);
-            //var strNode = Json.Serialize(lambdaNode);
-
-            var lambdaExp = convertService.ConvertToCode_LambdaExpression(lambdaNode, new[] { entityType });
-            return lambdaExp.Compile();
+            var indexName = GetIndex<Entity>();
+            return Query<Entity>(indexName);
         }
 
-        protected virtual SearchResponse<Model> Query<Model>(object queryPayload, string indexName)
+        protected static async Task<List<Result>> ToListAsync<Entity, Result>(DbContext self, Expression expression, object queryPayload, Func<Entity, Result> select, string indexName)
         {
-            var searchUrl = $"{readOnlyServerAddress}/{indexName}/_search";
-            var strQuery = Serialize(queryPayload);
-            var searchContent = new StringContent(strQuery, Encoding.UTF8, "application/json");
-            var httpResponse = httpClient.PostAsync(searchUrl, searchContent).Result;
+            var searchResult = await self.QueryAsync<Entity>(queryPayload, indexName);
 
-            var strResponse = httpResponse.Content.ReadAsStringAsync().Result;
-            if (!httpResponse.IsSuccessStatusCode) throw new Exception(strResponse);
+            var entityDescriptor = self.GetEntityDescriptor(typeof(Entity));
+            var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(entityDescriptor));
 
-            var searchResult = Deserialize<SearchResponse<Model>>(strResponse);
-            return searchResult;
-        }
-
-        public virtual object BuildElasticQueryPayload(CombinedStream combinedStream)
-        {
-            var queryBody = new Dictionary<string, object>();
-            // #1 condition
-            var conditionNode = combinedStream.where;
-            if (conditionNode == null)
-                queryBody["query"] = new { match_all = new { } };
+            if (select == null)
+            {
+                return entities.ToList() as List<Result>;
+            }
             else
-                queryBody["query"] = ConvertCondition(conditionNode);
-            // #2 orders
-            if (combinedStream.orders?.Any() == true)
             {
-                queryBody["sort"] = combinedStream.orders
-                                 .Select(order => new Dictionary<string, object> { [GetNodeField(order.member)] = new { order = order.asc ? "asc" : "desc" } })
-                                 .ToList();
+                return entities.Select(entity => select(entity)).ToList();
             }
-            // #3 skip take
-            if (combinedStream.skip.HasValue)
-                queryBody["from"] = combinedStream.skip.Value;
-            if (combinedStream.take.HasValue)
-                queryBody["size"] = combinedStream.take.Value;
-            return queryBody;
         }
 
-        #region ConvertCondition
-        public virtual string GetNodeField(ExpressionNode_Member data)
+
+        #region Method cache
+        private static MethodInfo MethodInfo_ToListAsync_;
+        static MethodInfo MethodInfo_ToListAsync(Type entityType, Type resultEntityType) =>
+            (MethodInfo_ToListAsync_ ??=
+                 new Func<DbContext, Expression, object, Func<object, string>, string, Task<List<string>>>(ToListAsync)
+                .GetMethodInfo().GetGenericMethodDefinition())
+            .MakeGenericMethod(entityType, resultEntityType);
+
+        #endregion
+
+        public virtual IQueryable<Entity> Query<Entity>(string indexName)
         {
-            string parent = null;
-            if (data.objectValue?.nodeType == NodeType.Member) parent = GetNodeField(data.objectValue);
-            if (parent == null)
-                return data?.memberName;
-            return parent + "." + data?.memberName;
-        }
-        public virtual object GetNodeValue(ExpressionNode_Constant data)
-        {
-            return data?.value;
-        }
-        static readonly Dictionary<string, string> conditionMap
-            = new Dictionary<string, string> { [NodeType.AndAlso] = "must", [NodeType.OrElse] = "should", [NodeType.Not] = "must_not" };
-        public virtual object ConvertCondition(ExpressionNode data)
-        {
-            switch (data.nodeType)
+            return QueryableBuilder.Build<Entity>(QueryExecutor, dbGroupName);
+
+            #region QueryExecutor
+            object QueryExecutor(Expression expression, Type expressionResultType)
             {
-                case NodeType.AndAlso:
-                case NodeType.OrElse:
-                    {
-                        ExpressionNode_Binary binary = data;
-                        var condition = conditionMap[data.nodeType];
-                        var conditions = new[] { ConvertCondition(binary.left), ConvertCondition(binary.right) };
-                        return new { @bool = new Dictionary<string, object> { [condition] = conditions } };
-                    }
-                case NodeType.Not:
-                    {
-                        ExpressionNode_Not notNode = data;
-                        var condition = conditionMap[data.nodeType];
-                        var conditions = new[] { ConvertCondition(notNode.body) };
-                        return new { @bool = new Dictionary<string, object> { [condition] = conditions } };
-                    }
-                case NodeType.NotEqual:
-                    {
-                        ExpressionNode_Binary binary = data;
-                        return ConvertCondition(ExpressionNode.Not(ExpressionNode.Binary(nodeType: NodeType.Equal, left: binary.left, right: binary.right)));
-                    }
-                case NodeType.Equal:
-                    {
-                        ExpressionNode_Binary binary = data;
-                        ExpressionNode_Member memberNode;
-                        ExpressionNode valueNode;
-                        string operation = binary.nodeType;
-                        if (binary.left.nodeType == NodeType.Member)
-                        {
-                            memberNode = binary.left;
-                            valueNode = binary.right;
-                        }
-                        else
-                        {
-                            memberNode = binary.right;
-                            valueNode = binary.left;
-                        }
-                        var field = GetNodeField(memberNode);
-                        var value = GetNodeValue(valueNode);
+                // #1 convert to ExpressionNode
+                ExpressionNode_Lambda node = convertService.ConvertToData_LambdaNode(expression, autoReduce: true, isArgument: QueryIsFromSameDb);
+                //var strNode = Json.Serialize(node);
 
-                        // {"term":{"name":"lith" } }
-                        return new { term = new Dictionary<string, object> { [field] = value } };
-                    }
-                case NodeType.LessThan:
-                case NodeType.LessThanOrEqual:
-                case NodeType.GreaterThan:
-                case NodeType.GreaterThanOrEqual:
-                    {
-                        ExpressionNode_Binary binary = data;
-                        ExpressionNode_Member memberNode;
-                        ExpressionNode valueNode;
-                        string operation = binary.nodeType;
-                        if (binary.left.nodeType == NodeType.Member)
-                        {
-                            memberNode = binary.left;
-                            valueNode = binary.right;
-                        }
-                        else
-                        {
-                            memberNode = binary.right;
-                            valueNode = binary.left;
-                            if (operation.StartsWith("LessThan")) operation = operation.Replace("LessThan", "GreaterThan");
-                            else operation = operation.Replace("GreaterThan", "LessThan");
-                        }
-                        var field = GetNodeField(memberNode);
-                        var value = GetNodeValue(valueNode);
+                // #2 convert to Stream
+                var stream = StreamReader.ReadNode(node);
+                //var strStream = Json.Serialize(stream);
+
+                // #3.3 Query
+                // #3.3.1
+                if (stream is not CombinedStream combinedStream) combinedStream = new CombinedStream("tmp") { source = stream };
+                SourceStream source = combinedStream.source as SourceStream ?? throw new NotSupportedException("not supported nested query");
+                if (combinedStream.isGroupedStream) throw new NotSupportedException("not supported group query");
+                if (combinedStream.joins?.Any() == true) throw new NotSupportedException("not supported join query");
+                if (combinedStream.distinct != null) throw new NotSupportedException("not supported distinct query");
 
 
-                        //  { "range": { "age": { "gte": 10, "lte": 20 } } }
-                        string optType = operation switch
-                        {
-                            NodeType.GreaterThan => "gt",
-                            NodeType.GreaterThanOrEqual => "gte",
-                            NodeType.LessThan => "lt",
-                            NodeType.LessThanOrEqual => "lte",
-                            _ => throw new NotSupportedException("not supported operator:" + operation),
-                        };
-                        return new { range = new Dictionary<string, object> { [field] = new Dictionary<string, object> { [optType] = value } } };
-                    }
-                case NodeType.MethodCall:
+                var queryPayload = ConvertStreamToQuery(combinedStream);
+
+
+                if (combinedStream.method == nameof(Queryable_Extensions.TotalCount) || combinedStream.method == nameof(Queryable.Count))
+                {
+                    var queryArg = (combinedStream.orders, combinedStream.skip, combinedStream.take);
+                    (combinedStream.orders, combinedStream.skip, combinedStream.take) = (null, null, 0);
+
+                    var count = Query<Entity>(queryPayload, indexName)?.hits?.total?.value ?? 0;
+
+                    if (count > 0 && combinedStream.method == nameof(Queryable.Count))
                     {
-                        ExpressionNode_MethodCall methodCall = data;
-                        switch (methodCall.methodName)
+                        if (queryArg.skip > 0) count = Math.Max(count - queryArg.skip.Value, 0);
+
+                        if (queryArg.take.HasValue)
+                            count = Math.Min(count, queryArg.take.Value);
+                    }
+
+                    return count;
+                }
+
+
+                if (combinedStream.method == nameof(Orm_Extensions.ToExecuteString))
+                {
+                    return Serialize(queryPayload);
+                }
+
+                Delegate select = null;
+                if (combinedStream.select?.fields != null)
+                {
+                    //if (combinedStream.select.isDefaultSelect != true)
+                    select = BuildSelect(source.GetEntityType(), combinedStream.select.fields, source.alias);
+                }
+
+                if (combinedStream.method == nameof(Queryable_Extensions.ToListAsync))
+                {
+                    var resultEntityType = expression.Type.GetGenericArguments()[0].GetGenericArguments()[0];
+                    return MethodInfo_ToListAsync(typeof(Entity), resultEntityType).Invoke(null, new[] { this, expression, queryPayload, select, indexName });
+                }
+
+                var searchResult = Query<Entity>(queryPayload, indexName);
+
+
+                var entityDescriptor = GetEntityDescriptor(typeof(Entity));
+                var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(entityDescriptor));
+
+
+
+                // #3.3.2 execute and read result
+                switch (combinedStream.method)
+                {
+                    case nameof(Queryable.FirstOrDefault):
                         {
-                            #region ##1 String method:  StartsWith EndsWith Contains
-                            case nameof(string.StartsWith): // String.StartsWith
+                            var entity = entities.FirstOrDefault();
+                            return select == null ? entity : select.DynamicInvoke(entity);
+                        }
+                    case nameof(Queryable.First):
+                        {
+                            var entity = entities.First();
+                            return select == null ? entity : select.DynamicInvoke(entity);
+                        }
+                    case nameof(Queryable.LastOrDefault):
+                        {
+                            var entity = entities.LastOrDefault();
+                            return select == null ? entity : select.DynamicInvoke(entity);
+                        }
+                    case nameof(Queryable.Last):
+                        {
+                            var entity = entities.Last();
+                            return select == null ? entity : select.DynamicInvoke(entity);
+                        }
+                    case nameof(Queryable_Extensions.ToListAndTotalCount):
+                        {
+                            IList list; int totalCount;
+
+                            // #1 ToList
+                            {
+                                if (select == null)
                                 {
-                                    ExpressionNode_Member memberNode = methodCall.@object;
-                                    ExpressionNode valueNode = methodCall.arguments[0];
-                                    var field = GetNodeField(memberNode);
-                                    var value = GetNodeValue(valueNode) + "*";
-                                    return GetCondition_StringContains(field, value);
+                                    list = entities.ToList();
                                 }
-                            case nameof(string.EndsWith): // String.EndsWith
+                                else
                                 {
-                                    ExpressionNode_Member memberNode = methodCall.@object;
-                                    ExpressionNode valueNode = methodCall.arguments[0];
-                                    var field = GetNodeField(memberNode);
-                                    var value = "*" + GetNodeValue(valueNode);
-                                    return GetCondition_StringContains(field, value);
+                                    // ToList
+                                    var resultEntityType = expression.Type.GetGenericArguments()?.FirstOrDefault()?.GetGenericArguments()?.FirstOrDefault();
+                                    list = Activator.CreateInstance(typeof(List<>).MakeGenericType(resultEntityType)) as IList;
+                                    foreach (var entity in entities)
+                                    {
+                                        list.Add(select.DynamicInvoke(entity));
+                                    }
                                 }
-                            case nameof(string.Contains) when methodCall.methodCall_typeName == "String": // String.Contains
-                                {
-                                    ExpressionNode_Member memberNode = methodCall.@object;
-                                    ExpressionNode valueNode = methodCall.arguments[0];
-                                    var field = GetNodeField(memberNode);
-                                    var value = "*" + GetNodeValue(valueNode) + "*";
-                                    return GetCondition_StringContains(field, value);
-                                }
-                            #endregion
+                            }
 
-                            // ##2 in
-                            case nameof(Enumerable.Contains):
-                                {
-                                    ExpressionNode valueNode = methodCall.arguments[0];
-                                    ExpressionNode_Member memberNode = methodCall.arguments[1];
-                                    var field = GetNodeField(memberNode);
-                                    var value = GetNodeValue(valueNode);
+                            // #2 TotalCount
+                            totalCount = searchResult?.hits?.total?.value ?? 0;
 
-                                    // {"terms":{"name":["lith1","lith2"] } }
-                                    return new { terms = new Dictionary<string, object> { [field] = value } };
-                                }
+                            return new Func<object, int, (object, int)>(ValueTuple.Create<object, int>)
+                                .Method.GetGenericMethodDefinition()
+                                .MakeGenericMethod(list.GetType(), typeof(int))
+                                .Invoke(null, new object[] { list, totalCount });
+
                         }
-                        break;
-                    }
+                    case nameof(Enumerable.ToList):
+                    case "":
+                    case null:
+                        {
+                            IList list;
+
+                            if (select == null)
+                            {
+                                list = entities.ToList();
+                            }
+                            else
+                            {
+                                // ToList
+                                var resultEntityType = expression.Type.GetGenericArguments()[0];
+                                list = Activator.CreateInstance(typeof(List<>).MakeGenericType(resultEntityType)) as IList;
+                                foreach (var entity in entities)
+                                {
+                                    list.Add(select.DynamicInvoke(entity));
+                                }
+                            }
+                            return list;
+                        }
+                }
+                throw new NotSupportedException("not supported query type: " + combinedStream.method);
             }
-            throw new NotSupportedException("not suported nodeType: " + data.nodeType);
+
+            #endregion
         }
-        object GetCondition_StringContains(string field, object value)
+
+        /// <summary>
+        /// to identify whether contexts are from the same database
+        /// </summary>
+        protected string dbGroupName { get; set; }
+        protected virtual bool QueryIsFromSameDb(object query, Type elementType)
         {
-            // { "wildcard": { "name.keyword": "*lith*" } }
-            return new { wildcard = new Dictionary<string, object> { [field + ".keyword"] = value } };
+            return dbGroupName == QueryableBuilder.GetQueryConfig(query as IQueryable) as string;
         }
+
         #endregion
 
 

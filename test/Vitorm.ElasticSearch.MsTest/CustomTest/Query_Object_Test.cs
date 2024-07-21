@@ -6,7 +6,7 @@ namespace Vitorm.MsTest.CustomTest
 {
 
     [TestClass]
-    public class Query_NestedField_Test
+    public class Query_Object_Test
     {
 
 
