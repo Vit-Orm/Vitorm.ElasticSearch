@@ -17,28 +17,35 @@ namespace Vitorm.ElasticSearch
 
         public FilterRuleBuilder filterRuleBuilder = defaultFilterRuleBuilder;
 
-        public virtual async Task<RangeData<Entity>> QueryAsync<Entity>(RangedQuery rangedQuery)
+        public virtual async Task<PageData<Entity>> QueryAsync<Entity>(PagedQuery query)
+        {
+            var data = await QueryAsync<Entity>(query.ToRangedQuery());
+
+            return new(query.page) { totalCount = data.totalCount, items = data.items };
+        }
+
+        public virtual async Task<RangeData<Entity>> QueryAsync<Entity>(RangedQuery query)
         {
             var queryBody = new Dictionary<string, object>();
 
             #region queryBody
             {
                 // #1 where
-                queryBody["query"] = filterRuleBuilder.ConvertToQuery(rangedQuery.filter);
+                queryBody["query"] = filterRuleBuilder.ConvertToQuery(query.filter);
 
                 // #2 orders
-                if (rangedQuery.orders?.Any() == true)
+                if (query.orders?.Any() == true)
                 {
-                    queryBody["sort"] = rangedQuery.orders
+                    queryBody["sort"] = query.orders
                                      .Select(order => new Dictionary<string, object> { [order.field] = new { order = order.asc ? "asc" : "desc" } })
                                      .ToList();
                 }
 
                 // #3 skip take
-                if (rangedQuery.range?.skip > 0)
-                    queryBody["from"] = rangedQuery.range.skip;
-                if (rangedQuery.range?.take > 0)
-                    queryBody["size"] = rangedQuery.range.take;
+                if (query.range?.skip > 0)
+                    queryBody["from"] = query.range.skip;
+                if (query.range?.take > 0)
+                    queryBody["size"] = query.range.take;
             }
             #endregion
 
@@ -51,7 +58,7 @@ namespace Vitorm.ElasticSearch
 
             var items = entities.ToList();
             var totalCount = searchResult?.hits?.total?.value ?? 0;
-            return new RangeData<Entity>(rangedQuery.range) { items = items, totalCount = totalCount };
+            return new RangeData<Entity>(query.range) { items = items, totalCount = totalCount };
 
         }
 

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
- 
+
 using Vit.Linq.Filter.ComponentModel;
 
 namespace Vitorm.ElasticSearch
@@ -35,7 +35,8 @@ namespace Vitorm.ElasticSearch
             return Operator;
         }
 
-        protected Dictionary<string, string> conditionMap
+
+        public Dictionary<string, string> conditionMap
                 = new() { [RuleCondition.And] = "filter", [RuleCondition.Or] = "should", [RuleCondition.Not] = "must_not" };
 
         protected virtual string GetRuleCondition(IFilterRule filter)
@@ -83,46 +84,56 @@ namespace Vitorm.ElasticSearch
             return ConvertOperatorToQuery(filter, Operator);
         }
 
-        protected List<(string Operator, Func<FilterRuleBuilder, IFilterRule, string, object> convertor)> operatorConvertors = new() {
+        public List<(string Operator, Func<FilterRuleBuilder, IFilterRule, string, object> convertor)> operatorConvertors = new() {
+            // Equal
+            (RuleOperator.Equal,OperatorConvertor_Equal),
+            (RuleOperator.NotEqual,OperatorConvertor_NotEqual),
 
-             (RuleOperator.Equal,OperatorConvertor_Equal),
+            // Compare
+            (RuleOperator.GreaterThan,OperatorConvertor_Compare),
+            (RuleOperator.GreaterThanOrEqual,OperatorConvertor_Compare),
+            (RuleOperator.LessThan,OperatorConvertor_Compare),
+            (RuleOperator.LessThanOrEqual,OperatorConvertor_Compare),
 
-             // Compare
-             (RuleOperator.GreaterThan,OperatorConvertor_Compare),
-             (RuleOperator.GreaterThanOrEqual,OperatorConvertor_Compare),
-             (RuleOperator.LessThan,OperatorConvertor_Compare),
-             (RuleOperator.LessThanOrEqual,OperatorConvertor_Compare),
-             
-             // In
-             (RuleOperator.In,OperatorConvertor_In),
-             
-             // String
-             (RuleOperator.Contains,OperatorConvertor_String),
-             (RuleOperator.StartsWith,OperatorConvertor_String),
-             (RuleOperator.EndsWith,OperatorConvertor_String),
-             (nameof(String_Extensions.Like),OperatorConvertor_String),
-             (nameof(String_Extensions.Match),OperatorConvertor_String),
+            // In
+            (RuleOperator.In,OperatorConvertor_In),
+            (RuleOperator.NotIn,OperatorConvertor_NotIn),
 
+            // String
+            (RuleOperator.Contains,OperatorConvertor_String),
+            (RuleOperator.StartsWith,OperatorConvertor_String),
+            (RuleOperator.EndsWith,OperatorConvertor_String),
+            (nameof(String_Extensions.Like),OperatorConvertor_String),
+            (nameof(String_Extensions.Match),OperatorConvertor_String),
         };
 
 
         public virtual object ConvertOperatorToQuery(IFilterRule filter, string Operator)
         {
-            if (Operator.StartsWith("Not", comparison))
-            {
-                var conditionType = conditionMap[RuleCondition.Not];
-                var conditions = ConvertOperatorToQuery(filter, Operator.Substring(3));
-                return new { @bool = new Dictionary<string, object> { [conditionType] = conditions } };
-            }
-
             var convertor = operatorConvertors.FirstOrDefault(item => Operator?.Equals(item.Operator, comparison) == true).convertor;
             if (convertor != null) return convertor(this, filter, Operator);
+
+            if (Operator.StartsWith("Not", comparison))
+            {
+                var conditions = ConvertOperatorToQuery(filter, Operator.Substring(3));
+                return OperatorConvertor_Not(conditions);
+            }
+            else if (Operator.StartsWith("!", comparison))
+            {
+                var conditions = ConvertOperatorToQuery(filter, Operator.Substring(1));
+                return OperatorConvertor_Not(conditions);
+            }
 
             throw new NotSupportedException("not supported Operator: " + Operator);
         }
 
+        public static object OperatorConvertor_Not(object condition)
+        {
+            return new { @bool = new Dictionary<string, object> { ["must_not"] = condition } };
+        }
+
         #region OperatorConvertor
-        protected static object OperatorConvertor_Equal(FilterRuleBuilder builder, IFilterRule filter, string Operator)
+        public static object OperatorConvertor_Equal(FilterRuleBuilder builder, IFilterRule filter, string Operator)
         {
             var field = builder.GetField(filter);
             var value = builder.GetValue(filter);
@@ -138,7 +149,10 @@ namespace Vitorm.ElasticSearch
                 return new { term = new Dictionary<string, object> { [field] = value } };
             }
         }
-        protected static object OperatorConvertor_Compare(FilterRuleBuilder builder, IFilterRule filter, string Operator)
+        public static object OperatorConvertor_NotEqual(FilterRuleBuilder builder, IFilterRule filter, string Operator) => OperatorConvertor_Not(OperatorConvertor_Equal(builder, filter, Operator));
+        public static object OperatorConvertor_NotIn(FilterRuleBuilder builder, IFilterRule filter, string Operator) => OperatorConvertor_Not(OperatorConvertor_In(builder, filter, Operator));
+
+        public static object OperatorConvertor_Compare(FilterRuleBuilder builder, IFilterRule filter, string Operator)
         {
             var field = builder.GetField(filter);
             var value = builder.GetValue(filter);
@@ -154,11 +168,10 @@ namespace Vitorm.ElasticSearch
             };
             return new { range = new Dictionary<string, object> { [field] = new Dictionary<string, object> { [optType] = value } } };
         }
-        protected static object OperatorConvertor_In(FilterRuleBuilder builder, IFilterRule filter, string Operator)
+        public static object OperatorConvertor_In(FilterRuleBuilder builder, IFilterRule filter, string Operator)
         {
             var field = builder.GetField(filter);
             var value = builder.GetValue(filter);
-
 
             if (value?.GetType() == typeof(string))
             {
@@ -171,11 +184,10 @@ namespace Vitorm.ElasticSearch
                 return new { terms = new Dictionary<string, object> { [field] = value } };
             }
         }
-        protected static object OperatorConvertor_String(FilterRuleBuilder builder, IFilterRule filter, string Operator)
+        public static object OperatorConvertor_String(FilterRuleBuilder builder, IFilterRule filter, string Operator)
         {
             var field = builder.GetField(filter);
             var value = builder.GetValue(filter);
-
 
             if (nameof(String_Extensions.Match).Equals(Operator, builder.comparison))
             {
