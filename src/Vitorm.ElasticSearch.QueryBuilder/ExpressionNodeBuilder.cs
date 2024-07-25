@@ -23,29 +23,26 @@ namespace Vitorm.ElasticSearch
                 case NodeType.OrElse:
                     {
                         ExpressionNode_Binary binary = data;
-                        var condition = conditionMap[data.nodeType];
-                        var conditions = new[] { ConvertExpressionNodeToQuery(binary.left), ConvertExpressionNodeToQuery(binary.right) };
-                        return new { @bool = new Dictionary<string, object> { [condition] = conditions } };
+                        var conditionType = conditionTypeMap[data.nodeType];
+                        var condition = new[] { ConvertExpressionNodeToQuery(binary.left), ConvertExpressionNodeToQuery(binary.right) };
+                        return new { @bool = new Dictionary<string, object> { [conditionType] = condition } };
                     }
                 case NodeType.Not:
                     {
                         ExpressionNode_Not notNode = data;
-                        var condition = conditionMap[data.nodeType];
-                        var conditions = new[] { ConvertExpressionNodeToQuery(notNode.body) };
-                        return new { @bool = new Dictionary<string, object> { [condition] = conditions } };
+                        var conditionType = conditionTypeMap[NodeType.Not];
+                        var condition = new[] { ConvertExpressionNodeToQuery(notNode.body) };
+                        // {"bool":{"must_not":{"exists":{"field":"address"}}}}
+                        return new { @bool = new Dictionary<string, object> { [conditionType] = condition } };
                     }
                 case NodeType.NotEqual:
-                    {
-                        ExpressionNode_Binary binary = data;
-                        return ConvertExpressionNodeToQuery(ExpressionNode.Not(ExpressionNode.Binary(nodeType: NodeType.Equal, left: binary.left, right: binary.right)));
-                    }
                 case NodeType.Equal:
                     {
                         ExpressionNode_Binary binary = data;
                         ExpressionNode memberNode;
                         ExpressionNode valueNode;
                         string operation = binary.nodeType;
-                        if (binary.left.nodeType == NodeType.Member)
+                        if (NodeIsField(binary.left))
                         {
                             memberNode = binary.left;
                             valueNode = binary.right;
@@ -58,16 +55,38 @@ namespace Vitorm.ElasticSearch
                         var field = GetNodeField(memberNode);
                         var value = GetNodeValue(valueNode);
 
+                        if (value == null)
+                        {
+                            if (data.nodeType == NodeType.NotEqual)
+                            {
+                                // {"exists":{"field":"address"}}
+                                return new { exists = new { field = field } };
+                            }
+                            else
+                            {
+                                // {"bool":{"must_not":{"exists":{"field":"address"}}}}
+                                return new { @bool = new { must_not = new { exists = new { field = field } } } };
+
+                            }
+                        }
+                        object condition;
                         if (memberNode.Member_GetType() == typeof(string))
                         {
                             // {"term":{"name.keyword":"lith" } }
-                            return new { term = new Dictionary<string, object> { [field + ".keyword"] = value } };
+                            condition = new { term = new Dictionary<string, object> { [field + ".keyword"] = value } };
                         }
                         else
                         {
                             // {"term":{"name":"lith" } }
-                            return new { term = new Dictionary<string, object> { [field] = value } };
+                            condition = new { term = new Dictionary<string, object> { [field] = value } };
                         }
+
+                        if (data.nodeType == NodeType.NotEqual)
+                        {
+                            var conditionType = conditionTypeMap[NodeType.Not];
+                            condition = new { @bool = new Dictionary<string, object> { [conditionType] = condition } };
+                        }
+                        return condition;
                     }
                 case NodeType.LessThan:
                 case NodeType.LessThanOrEqual:
@@ -78,7 +97,7 @@ namespace Vitorm.ElasticSearch
                         ExpressionNode memberNode;
                         ExpressionNode valueNode;
                         string operation = binary.nodeType;
-                        if (binary.left.nodeType == NodeType.Member)
+                        if (NodeIsField(binary.left))
                         {
                             memberNode = binary.left;
                             valueNode = binary.right;
@@ -90,7 +109,7 @@ namespace Vitorm.ElasticSearch
                             if (operation.StartsWith("LessThan")) operation = operation.Replace("LessThan", "GreaterThan");
                             else operation = operation.Replace("GreaterThan", "LessThan");
                         }
-                        var field = GetNodeField(memberNode);
+                        var field = GetNodeField(memberNode, out var fieldType);
                         var value = GetNodeValue(valueNode);
 
 
@@ -103,6 +122,13 @@ namespace Vitorm.ElasticSearch
                             NodeType.LessThanOrEqual => "lte",
                             _ => throw new NotSupportedException("not supported operator:" + operation),
                         };
+
+
+                        //if (fieldType == typeof(DateTime) || fieldType == typeof(DateTime?))
+                        //{
+                        //    if (value is DateTime time) value = time.ToString("yyyy-MM-dd HH:mm:ss");
+                        //    return new { range = new Dictionary<string, object> { [field] = new Dictionary<string, object> { [optType] = value, ["format"] = "yyyy-MM-dd HH:mm:ss" } } };
+                        //}
                         return new { range = new Dictionary<string, object> { [field] = new Dictionary<string, object> { [optType] = value } } };
                     }
                 case NodeType.MethodCall:
@@ -193,23 +219,52 @@ namespace Vitorm.ElasticSearch
             return new { wildcard = new Dictionary<string, object> { [field + ".keyword"] = value } };
         }
 
+        protected static string[] FieldMethodNames = new[] { nameof(NestedField_Extensions.Who), nameof(Object_Extensions_Convert.Convert), nameof(Object_Extensions_Property.Property) };
+        public virtual bool NodeIsField(ExpressionNode node)
+        {
+            if (node.nodeType == NodeType.Member) return true;
+            if (node.nodeType == NodeType.MethodCall && FieldMethodNames.Contains(node.methodName))
+                return true;
+            return false;
+        }
 
-        public virtual string GetNodeField(ExpressionNode data)
+        public virtual string GetNodeField(ExpressionNode data) => GetNodeField(data, out _);
+
+        public virtual string GetNodeField(ExpressionNode data, out Type type)
         {
             if (data?.nodeType == NodeType.MethodCall)
             {
                 ExpressionNode_MethodCall methodCall = data;
-
-                //  NestedField
-                if (methodCall.methodName == nameof(NestedField_Extensions.Who))
+                type = methodCall.MethodCall_GetReturnType();
+                switch (methodCall.methodName)
                 {
-                    ExpressionNode memberNode = methodCall.arguments[0];
-                    return GetNodeField(memberNode);
+                    case nameof(NestedField_Extensions.Who):
+                        {
+                            //  NestedField
+                            ExpressionNode node = methodCall.arguments[0];
+                            return GetNodeField(node);
+                        }
+                    case nameof(Object_Extensions_Convert.Convert):
+                        {
+                            ExpressionNode node = methodCall.arguments[0];
+                            return GetNodeField(node);
+                        }
+                    case nameof(Object_Extensions_Property.Property):
+                        {
+                            ExpressionNode node = methodCall.arguments[0];
+                            ExpressionNode_Constant path = methodCall.arguments[1];
+                            var propertyPath = path.value as string;
+                            var field = GetNodeField(node);
+                            if (string.IsNullOrEmpty(field)) return propertyPath;
+                            return $"{field}.{propertyPath}";
+                        }
                 }
                 throw new NotSupportedException("not supported field expression , Node Type: " + data.nodeType);
             }
 
             if (data?.nodeType != NodeType.Member) throw new NotSupportedException("not supported field expression , Node Type: " + data.nodeType);
+
+            type = data.Member_GetType();
 
             string parent = null;
             Type parentType = null;
@@ -262,7 +317,7 @@ namespace Vitorm.ElasticSearch
         }
 
 
-        public Dictionary<string, string> conditionMap
+        public Dictionary<string, string> conditionTypeMap
           = new Dictionary<string, string> { [NodeType.AndAlso] = "filter", [NodeType.OrElse] = "should", [NodeType.Not] = "must_not" };
     }
 }

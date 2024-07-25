@@ -17,7 +17,9 @@ namespace Vitorm.MsTest.CustomTest
 
             // ==
             {
-                var userList = userQuery.Where(u => u.birth == new DateTime(2021, 01, 01, 03, 00, 00)).ToList();
+                var query = userQuery.Where(u => u.birth == new DateTime(2021, 01, 01, 03, 00, 00));
+                var strQuery = query.ToExecuteString();
+                var userList = query.ToList();
                 Assert.AreEqual(1, userList.Count);
                 Assert.AreEqual(3, userList.First().id);
             }
@@ -30,7 +32,9 @@ namespace Vitorm.MsTest.CustomTest
             var userQuery = dbContext.Query<User>();
 
             {
-                var userList = userQuery.Where(u => u.birth >= new DateTime(2021, 01, 01, 05, 00, 00)).ToList();
+                var query = userQuery.Where(u => u.birth >= new DateTime(2021, 01, 01, 05, 00, 00));
+                var strQuery = query.ToExecuteString();
+                var userList = query.ToList();
                 Assert.AreEqual(2, userList.Count);
                 Assert.AreEqual(0, userList.Select(m => m.id).Except(new[] { 5, 6 }).Count());
             }
@@ -45,7 +49,9 @@ namespace Vitorm.MsTest.CustomTest
             var userQuery = dbContext.Query<User>();
 
             {
-                var userList = userQuery.Where(u => u.birth >= DateTime.Parse("2021-01-01 01:00:00").AddHours(4)).ToList();
+                var query = userQuery.Where(u => u.birth >= DateTime.Parse("2021-01-01 01:00:00").AddHours(4));
+                var strQuery = query.ToExecuteString();
+                var userList = query.ToList();
                 Assert.AreEqual(2, userList.Count);
                 Assert.AreEqual(0, userList.Select(m => m.id).Except(new[] { 5, 6 }).Count());
             }

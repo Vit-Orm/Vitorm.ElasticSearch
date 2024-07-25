@@ -8,7 +8,7 @@ namespace Vitorm.MsTest.QueryBuilder
 {
 
     [TestClass]
-    public class QueryBuilder_Test
+    public class FilterRuleBuilder_Test
     {
 
 
@@ -103,7 +103,61 @@ namespace Vitorm.MsTest.QueryBuilder
         }
 
 
+        [TestMethod]
+        public async Task Test_IsNull()
+        {
+            using var dbContext = DataSource.CreateDbContext();
+            var userQuery = dbContext.Query<User>();
 
+            var builder = dbContext.filterRuleBuilder;
+
+            {
+                var strQuery = "{ 'filter':{'field':'fatherId',  'operator': '=',  'value': null },  'orders':[{'field':'id','asc':false}],  'page':{'pageSize':10, 'pageIndex':1}  }".Replace("'", "\"");
+                var query = Json.Deserialize<PagedQuery>(strQuery);
+
+                var queryBody = builder.ConvertToQuery(query.filter);
+                var strRequest = Json.Serialize(queryBody);
+
+                var result = await dbContext.QueryAsync<User>(query);
+                Assert.AreEqual(3, result.totalCount);
+                Assert.AreEqual(6, result.items[0].id);
+            }
+            {
+                var strQuery = "{ 'filter':{'field':'fatherId',  'operator': '!=',  'value': null },  'orders':[{'field':'id','asc':false}],  'page':{'pageSize':10, 'pageIndex':1}  }".Replace("'", "\"");
+                var query = Json.Deserialize<PagedQuery>(strQuery);
+
+                var queryBody = builder.ConvertToQuery(query.filter);
+                var strRequest = Json.Serialize(queryBody);
+
+                var result = await dbContext.QueryAsync<User>(query);
+                Assert.AreEqual(3, result.totalCount);
+                Assert.AreEqual(3, result.items[0].id);
+            }
+
+            {
+                var strQuery = "{ 'filter':{'field':'fatherId',  'operator': 'IsNull' },  'orders':[{'field':'id','asc':false}],  'page':{'pageSize':10, 'pageIndex':1}  }".Replace("'", "\"");
+                var query = Json.Deserialize<PagedQuery>(strQuery);
+
+                var queryBody = builder.ConvertToQuery(query.filter);
+                var strRequest = Json.Serialize(queryBody);
+
+                var result = await dbContext.QueryAsync<User>(query);
+                Assert.AreEqual(3, result.totalCount);
+                Assert.AreEqual(6, result.items[0].id);
+            }
+
+            {
+                var strQuery = "{ 'filter':{'field':'fatherId',  'operator': 'IsNotNull' },  'orders':[{'field':'id','asc':false}],  'page':{'pageSize':10, 'pageIndex':1}  }".Replace("'", "\"");
+                var query = Json.Deserialize<PagedQuery>(strQuery);
+
+                var queryBody = builder.ConvertToQuery(query.filter);
+                var strRequest = Json.Serialize(queryBody);
+
+                var result = await dbContext.QueryAsync<User>(query);
+                Assert.AreEqual(3, result.totalCount);
+                Assert.AreEqual(3, result.items[0].id);
+            }
+        }
 
 
 

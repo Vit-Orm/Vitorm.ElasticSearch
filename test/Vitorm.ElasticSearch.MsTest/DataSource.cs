@@ -23,7 +23,7 @@ namespace Vitorm.MsTest
 
         public List<User> children { get; set; }
 
-
+        public string strId { get; set; }
         public string remarks { get; set; }
         public static User NewUser(int id, bool forAdd = false) => new User { key = id.ToString(), id = id, name = "testUser" + id };
 
@@ -73,13 +73,15 @@ namespace Vitorm.MsTest
         static void InitDbContext(Vitorm.ElasticSearch.DbContext dbContext)
         {
             var users = new List<User> {
-                    new User { key="1",id=1, name="u146", fatherId=4, motherId=6 },
-                    new User { key="2",id=2, name="u246", fatherId=4, motherId=6 },
-                    new User { key="3",id=3, name="u356", fatherId=5, motherId=6 },
-                    new User { key="4",id=4, name="u400" },
-                    new User { key="5",id=5, name="u500" },
-                    new User { key="6",id=6, name="u600" },
+                    new User { id=1, name="u146", fatherId=4, motherId=6 },
+                    new User { id=2, name="u246", fatherId=4, motherId=6 },
+                    new User { id=3, name="u356", fatherId=5, motherId=6 },
+                    new User { id=4, name="u400" },
+                    new User { id=5, name="u500" },
+                    new User { id=6, name="u600" },
                 };
+
+            users.ForEach(user => { user.strId = user.key = user.id.ToString(); });
 
             users.ForEach(user => { user.birth = DateTime.Parse("2021-01-01 00:00:00").AddHours(user.id); });
 

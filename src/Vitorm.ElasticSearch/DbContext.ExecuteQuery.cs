@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -15,6 +14,12 @@ namespace Vitorm.ElasticSearch
 {
     public partial class DbContext
     {
+        /// <summary>
+        /// default is 10000.
+        /// {"type":"illegal_argument_exception","reason":"Result window is too large, from + size must be less than or equal to: [10000] but was [10001]. See the scroll api for a more efficient way to request large data sets. This limit can be set by changing the [index.max_result_window] index level setting."}
+        /// </summary>
+        public int maxResultWindowSize = 10000;
+
 
         protected virtual Delegate BuildSelect(Type entityType, ExpressionNode selectedFields, string entityParameterName)
         {
@@ -83,10 +88,13 @@ namespace Vitorm.ElasticSearch
             }
 
             // #3 skip take
-            if (combinedStream.skip.HasValue)
-                queryBody["from"] = combinedStream.skip.Value;
-            if (combinedStream.take.HasValue)
-                queryBody["size"] = combinedStream.take.Value;
+            int skip = 0;
+            if (combinedStream.skip > 0)
+                queryBody["from"] = skip = combinedStream.skip.Value;
+
+            var take = combinedStream.take >= 0 ? combinedStream.take.Value : maxResultWindowSize;
+            if (take + skip > maxResultWindowSize) take = maxResultWindowSize - skip;
+            queryBody["size"] = take;
             return queryBody;
         }
 
