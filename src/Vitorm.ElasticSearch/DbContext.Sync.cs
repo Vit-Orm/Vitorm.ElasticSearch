@@ -15,7 +15,7 @@ namespace Vitorm.ElasticSearch
 
         public virtual string GetMapping(string indexName, bool throwErrorIfFailed = false)
         {
-            return TryCreateTableAsync(indexName, throwErrorIfFailed).Result;
+            return GetMappingAsync(indexName, throwErrorIfFailed).Result;
         }
         #endregion
 
@@ -27,9 +27,9 @@ namespace Vitorm.ElasticSearch
             TryCreateTableAsync<Entity>().Wait();
         }
 
-        public virtual string TryCreateTable(string indexName, bool throwErrorIfFailed = false)
+        public virtual string TryCreateTable<Entity>(string indexName, bool throwErrorIfFailed = false)
         {
-            return TryCreateTableAsync(indexName, throwErrorIfFailed).Result;
+            return TryCreateTableAsync<Entity>(indexName, throwErrorIfFailed).Result;
         }
         #endregion
 

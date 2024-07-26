@@ -1,12 +1,16 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
+using Vit.Core.Module.Serialization;
 using Vit.Extensions;
+using Vit.Extensions.Serialize_Extensions;
 
 namespace Vitorm.ElasticSearch
 {
@@ -21,13 +25,14 @@ namespace Vitorm.ElasticSearch
             return await GetMappingAsync(indexName);
         }
 
-        public virtual async Task<string> GetMappingAsync(string indexName)
+        public virtual async Task<string> GetMappingAsync(string indexName, bool throwErrorIfFailed = false)
         {
             var searchUrl = $"{readOnlyServerAddress}/{indexName}/_mapping";
 
             var httpResponse = await httpClient.GetAsync(searchUrl);
             var strResponse = await httpResponse.Content.ReadAsStringAsync();
-            if (!httpResponse.IsSuccessStatusCode) throw new Exception(strResponse);
+
+            if (throwErrorIfFailed && !httpResponse.IsSuccessStatusCode) throw new Exception(strResponse);
             return strResponse;
         }
         #endregion
@@ -37,19 +42,100 @@ namespace Vitorm.ElasticSearch
         public virtual async Task TryCreateTableAsync<Entity>()
         {
             var indexName = GetIndex<Entity>();
-            await TryCreateTableAsync(indexName);
+            await TryCreateTableAsync<Entity>(indexName);
         }
-        public virtual async Task<string> TryCreateTableAsync(string indexName, bool throwErrorIfFailed = false)
+        public virtual async Task<string> TryCreateTableAsync<Entity>(string indexName, bool throwErrorIfFailed = false)
         {
             var url = $"{serverAddress}/{indexName}";
-            var strPayload = "{\"mappings\":{\"properties\":{\"@timestamp\":{\"type\":\"date\"},\"time\":{\"type\":\"date\"}}}}";
-            var content = new StringContent(strPayload, Encoding.UTF8, "application/json");
+
+            var strMapping = BuildMapping<Entity>();
+            var content = new StringContent(strMapping, Encoding.UTF8, "application/json");
 
             var httpResponse = await httpClient.PutAsync(url, content);
             var strResponse = await httpResponse.Content.ReadAsStringAsync();
 
             if (throwErrorIfFailed && !httpResponse.IsSuccessStatusCode) throw new Exception(strResponse);
             return strResponse;
+        }
+        public string dateFormat = "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis";
+        public virtual string BuildMapping<Entity>()
+        {
+            /*
+{
+    "mappings":{
+        "properties":{
+            "birthday":{ "type":"date", "format":"yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||strict_date_optional_time||epoch_millis" }
+        }
+    }
+}
+{
+    "mappings":{
+        "properties":{
+            "@timestamp":{
+                "type":"date"
+            },
+            "time":{
+                "type":"date"
+            }
+        }
+    }
+}
+             */
+            if (typeof(Entity) == typeof(object))
+            {
+                //var strMapping = "{\"mappings\":{\"properties\":{\"@timestamp\":{\"type\":\"date\"},\"time\":{\"type\":\"date\"}}}}";
+                return "{\"mappings\":{\"properties\":{}}}";
+            }
+            var properties = new Dictionary<string, object>();
+            var mapping = new { mappings = new { properties } };
+
+            AddProperties(typeof(Entity).GetProperties(BindingFlags.Public | BindingFlags.Instance), Array.Empty<Type>());
+
+            #region Add properties
+            void AddProperties(PropertyInfo[] propertyInfos, IEnumerable<Type> typeCache, string parentPath = null)
+            {
+                if (propertyInfos?.Any() != true) return;
+
+                foreach (PropertyInfo propertyInfo in propertyInfos)
+                {
+                    if (propertyInfo.GetCustomAttribute<System.ComponentModel.DataAnnotations.Schema.NotMappedAttribute>() != null)
+                        continue;
+
+                    var columnAttr = propertyInfo.GetCustomAttribute<System.ComponentModel.DataAnnotations.Schema.ColumnAttribute>();
+                    var columnName = columnAttr?.Name ?? propertyInfo.Name;
+                    var databaseType = columnAttr?.TypeName;
+                    var fieldPath = parentPath + columnName;
+
+                    var propertyType = propertyInfo.PropertyType;
+
+                    // Array or List
+                    if (propertyType.IsArray) propertyType = propertyType.GetElementType();
+                    else if (propertyType.IsGenericType && typeof(IEnumerable).IsAssignableFrom(propertyType))
+                    {
+                        //  IEnumerable<T>  or  IQueryable<T>
+                        propertyType = propertyType.GetGenericArguments()[0];
+                    }
+
+                    if (!propertyType.TypeIsValueTypeOrStringType() && !typeCache.Contains(propertyType))
+                    {
+                        var newTypeCache = typeCache.Concat(new[] { propertyType });
+                        AddProperties(propertyType.GetProperties(BindingFlags.Public | BindingFlags.Instance), newTypeCache, fieldPath + ".");
+                    }
+
+
+                    if (!string.IsNullOrEmpty(databaseType))
+                    {
+                        properties[fieldPath] = Json.Deserialize<object>(databaseType);
+                    }
+                    else if (propertyType == typeof(DateTime) || propertyType == typeof(DateTime?))
+                    {
+                        properties[fieldPath] = new { type = "date", format = dateFormat };
+                    }
+                }
+            }
+            #endregion
+
+            return Json.Serialize(mapping);
         }
         #endregion
 

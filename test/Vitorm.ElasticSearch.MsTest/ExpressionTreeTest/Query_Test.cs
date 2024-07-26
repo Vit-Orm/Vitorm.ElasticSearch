@@ -19,6 +19,8 @@ namespace Vitorm.MsTest.ExpressionTreeTest
             dbSet.TryCreateTable();
             dbSet.AddRange(initUsers);
 
+            DataSource.WaitForUpdate();
+
             var query = dbSet.Query();
             ExpressionTester.TestQueryable(query);
         }

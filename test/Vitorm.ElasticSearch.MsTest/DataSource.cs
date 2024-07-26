@@ -1,4 +1,6 @@
-﻿using Vit.Core.Util.ConfigurationManager;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+using Vit.Core.Util.ConfigurationManager;
 
 namespace Vitorm.MsTest
 {
@@ -13,6 +15,9 @@ namespace Vitorm.MsTest
         public int id { get; set; }
         public string name { get; set; }
         public DateTime? birth { get; set; }
+
+        [Column(TypeName= "{ \"type\":\"date\", \"format\":\"yyyy-MM-dd HH:mm:ss\" }")]
+        public string strBirth { get; set; }
 
         public int? fatherId { get; set; }
         public int? motherId { get; set; }
@@ -84,6 +89,7 @@ namespace Vitorm.MsTest
             users.ForEach(user => { user.strId = user.key = user.id.ToString(); });
 
             users.ForEach(user => { user.birth = DateTime.Parse("2021-01-01 00:00:00").AddHours(user.id); });
+            users.ForEach(user => { user.strBirth = user.birth.Value.ToString("yyyy-MM-dd HH:mm:ss"); });
 
             users.ForEach(user =>
             {
