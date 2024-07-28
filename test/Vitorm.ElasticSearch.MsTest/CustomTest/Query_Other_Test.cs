@@ -2,8 +2,6 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-using Vitorm.ElasticSearch;
-
 namespace Vitorm.MsTest.CustomTest
 {
 

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Linq;
+﻿using System.Data;
 using System.Linq.Expressions;
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -43,7 +40,7 @@ namespace Vit.Linq.ExpressionTree.ExpressionTreeTest
             var canCalculate = false;
 
             #region #0 Add, An addition operation, such as a + b, without overflow checking, for numeric operands.
-            if(canCalculate)
+            if (canCalculate)
             {
                 predicate = u => u.id + 1 == 6;
                 var rows = Test(query, predicate);

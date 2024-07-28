@@ -189,8 +189,8 @@ namespace Vitorm.ElasticSearch
             };
             return new { range = new Dictionary<string, object> { [field] = new Dictionary<string, object> { [optType] = value } } };
         }
-      
-        
+
+
         public static object OperatorConvertor_In(FilterRuleBuilder builder, IFilterRule filter, string Operator)
         {
             var field = builder.GetField(filter);

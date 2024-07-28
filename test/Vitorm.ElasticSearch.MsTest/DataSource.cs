@@ -16,7 +16,7 @@ namespace Vitorm.MsTest
         public string name { get; set; }
         public DateTime? birth { get; set; }
 
-        [Column(TypeName= "{ \"type\":\"date\", \"format\":\"yyyy-MM-dd HH:mm:ss\" }")]
+        [Column(TypeName = "{ \"type\":\"date\", \"format\":\"yyyy-MM-dd HH:mm:ss\" }")]
         public string strBirth { get; set; }
 
         public int? fatherId { get; set; }
