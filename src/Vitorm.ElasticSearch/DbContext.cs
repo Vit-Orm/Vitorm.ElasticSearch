@@ -9,23 +9,20 @@ namespace Vitorm.ElasticSearch
 {
     public partial class DbContext : Vitorm.DbContext
     {
-        // https://www.elastic.co/guide/en/elasticsearch/reference/7.17/docs-bulk.html
-        // https://elasticsearch.bookhub.tech/rest_apis/document_apis/reindex
-
 
         /// <summary>
-        /// es address, example:"http://192.168.20.20:9200"
+        /// es address, example:"http://localhost:9200"
         /// </summary>
         public string serverAddress { get; set; }
 
         /// <summary>
-        /// es address, example:"http://192.168.20.20:9200"
+        /// es address, example:"http://localhost:9200"
         /// </summary>
         protected string _readOnlyServerAddress { get; set; }
 
 
         /// <summary>
-        /// es address, example:"http://192.168.20.20:9200"
+        /// es address, example:"http://localhost:9200"
         /// </summary>
         public string readOnlyServerAddress => _readOnlyServerAddress ?? serverAddress;
 
@@ -86,7 +83,7 @@ namespace Vitorm.ElasticSearch
 
 
         // GetDocumentId
-        public Func<IEntityDescriptor, object, string> GetDocumentId = (entityDescriptor, entity) => entityDescriptor.key.GetValue(entity)?.ToString();
+        public Func<IEntityDescriptor, object, string> GetDocumentId = (entityDescriptor, entity) => entityDescriptor?.key?.GetValue(entity)?.ToString();
 
         // Serialize
         public virtual string Serialize<Model>(Model m)

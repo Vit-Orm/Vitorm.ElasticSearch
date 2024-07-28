@@ -54,8 +54,8 @@ namespace Vitorm.ElasticSearch
         {
             var searchUrl = $"{readOnlyServerAddress}/{indexName}/_search";
 
-            var searchContent = new StringContent(query, Encoding.UTF8, "application/json");
-            var httpResponse = await httpClient.PostAsync(searchUrl, searchContent);
+            using var searchContent = new StringContent(query, Encoding.UTF8, "application/json");
+            using var httpResponse = await httpClient.PostAsync(searchUrl, searchContent);
 
             var strResponse = await httpResponse.Content.ReadAsStringAsync();
             if (!httpResponse.IsSuccessStatusCode) throw new Exception(strResponse);
@@ -121,10 +121,10 @@ namespace Vitorm.ElasticSearch
                     public float? _score { get; set; }
                     public T _source { get; set; }
 
-                    public T GetSource(IEntityDescriptor entityDescriptor)
+                    public T GetSource(DbContext dbContext, IEntityDescriptor entityDescriptor)
                     {
                         if (_source != null && _id != null)
-                            entityDescriptor?.key?.SetValue(_source, _id);
+                            dbContext.SetKey(entityDescriptor, _source, _id);
                         return _source;
                     }
                 }

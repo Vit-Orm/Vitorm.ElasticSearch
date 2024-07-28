@@ -58,7 +58,7 @@ namespace Vitorm.ElasticSearch
             var indexName = GetIndex<Entity>();
 
             var searchResult = await QueryAsync<Entity>(queryBody, indexName);
-            var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(entityDescriptor));
+            var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(this, entityDescriptor));
 
             var items = entities.ToList();
             var totalCount = searchResult?.hits?.total?.value ?? 0;

@@ -3,12 +3,14 @@
 
 -----------------------
 # 2.0.2
-support Convert
-support is null and is not null
-support Property<T>("path.path2")
-fix Result window too large issue(from + size must be less than or equal to: [10000]).
-FilterRuleQueryBuilder support IsNull IsNotNull ==null !=null
-support Date format
+- support Convert
+- support is null and is not null
+- support Property<T>("path.path2")
+- fix Result window too large issue(from + size must be less than or equal to: [10000]).
+- FilterRuleQueryBuilder support IsNull IsNotNull ==null !=null
+- support Date format
+- support add new Entity without ElasticSearch  key
+
 
 -----------------------
 # 2.0.1

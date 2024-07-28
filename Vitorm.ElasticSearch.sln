@@ -5,6 +5,7 @@ VisualStudioVersion = 17.0.31606.5
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "doc", "doc", "{75C25D0B-8529-4E3F-AF43-6EC1E9E40828}"
 	ProjectSection(SolutionItems) = preProject
+		doc\ElasticSearch.md = doc\ElasticSearch.md
 		README.md = README.md
 		doc\ReleaseLog.md = doc\ReleaseLog.md
 		doc\TODO.md = doc\TODO.md
@@ -19,6 +20,8 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Vitorm.ElasticSearch.MsTest", "test\Vitorm.ElasticSearch.MsTest\Vitorm.ElasticSearch.MsTest.csproj", "{A3F32D76-DD54-4CDF-8B5A-ACE00D86A222}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Vitorm.ElasticSearch.QueryBuilder", "src\Vitorm.ElasticSearch.QueryBuilder\Vitorm.ElasticSearch.QueryBuilder.csproj", "{0F9E7FC4-EB61-4F5D-A26B-C5E1016556C3}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Vitorm.ElasticSearch.Console", "test\Vitorm.ElasticSearch.Console\Vitorm.ElasticSearch.Console.csproj", "{4EC77808-51BE-45A6-92FD-9384CB04FE31}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -38,6 +41,10 @@ Global
 		{0F9E7FC4-EB61-4F5D-A26B-C5E1016556C3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0F9E7FC4-EB61-4F5D-A26B-C5E1016556C3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{0F9E7FC4-EB61-4F5D-A26B-C5E1016556C3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4EC77808-51BE-45A6-92FD-9384CB04FE31}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4EC77808-51BE-45A6-92FD-9384CB04FE31}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4EC77808-51BE-45A6-92FD-9384CB04FE31}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4EC77808-51BE-45A6-92FD-9384CB04FE31}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -46,6 +53,7 @@ Global
 		{61155097-D1CB-4876-BD71-4ADE93F14BE2} = {05176905-A2A5-4015-9F04-2904506C902F}
 		{A3F32D76-DD54-4CDF-8B5A-ACE00D86A222} = {7904FE51-04FF-4477-8E3A-CC340389EE32}
 		{0F9E7FC4-EB61-4F5D-A26B-C5E1016556C3} = {05176905-A2A5-4015-9F04-2904506C902F}
+		{4EC77808-51BE-45A6-92FD-9384CB04FE31} = {7904FE51-04FF-4477-8E3A-CC340389EE32}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C7DA16E3-9949-49FA-B0B4-F830636DE60F}
