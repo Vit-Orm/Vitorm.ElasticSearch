@@ -15,7 +15,7 @@ namespace Vitorm.ElasticSearch
 
         public virtual string GetMapping(string indexName, bool throwErrorIfFailed = false)
         {
-            return TryCreateTableAsync(indexName, throwErrorIfFailed).Result;
+            return GetMappingAsync(indexName, throwErrorIfFailed).Result;
         }
         #endregion
 
@@ -27,9 +27,9 @@ namespace Vitorm.ElasticSearch
             TryCreateTableAsync<Entity>().Wait();
         }
 
-        public virtual string TryCreateTable(string indexName, bool throwErrorIfFailed = false)
+        public virtual string TryCreateTable<Entity>(string indexName, bool throwErrorIfFailed = false)
         {
-            return TryCreateTableAsync(indexName, throwErrorIfFailed).Result;
+            return TryCreateTableAsync<Entity>(indexName, throwErrorIfFailed).Result;
         }
         #endregion
 
@@ -150,7 +150,7 @@ namespace Vitorm.ElasticSearch
         {
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
 
-            var key = entityDescriptor.key.GetValue(entity);
+            var key = GetDocumentId(entityDescriptor, entity);
             return DeleteByKey(key, indexName);
         }
 
@@ -160,14 +160,14 @@ namespace Vitorm.ElasticSearch
         {
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
 
-            var keys = entities.Select(entity => entityDescriptor.key.GetValue(entity)).ToList();
+            var keys = entities.Select(entity => GetDocumentId(entityDescriptor, entity)).ToList();
             return DeleteByKeys<Entity, object>(keys);
         }
         public virtual int DeleteRange<Entity>(IEnumerable<Entity> entities, string indexName)
         {
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
 
-            var keys = entities.Select(entity => entityDescriptor.key.GetValue(entity)).ToList();
+            var keys = entities.Select(entity => GetDocumentId(entityDescriptor, entity)).ToList();
             return DeleteByKeys<Entity, object>(keys, indexName);
         }
 

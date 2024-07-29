@@ -44,8 +44,11 @@ dotnet add package Vitorm.ElasticSearch
 ```
 
 ## Minimum viable demo
+> code address: [Program_Min.cs](https://github.com/VitormLib/Vitorm.ElasticSearch/tree/master/test/Vitorm.ElasticSearch.Console/Program_Min.cs)    
 ``` csharp
-using Vitorm;
+using System;
+using System.Linq;
+using System.Threading;
 namespace App
 {
     public class Program_Min
@@ -54,6 +57,10 @@ namespace App
         {
             // #1 Init
             using var dbContext = new Vitorm.ElasticSearch.DbContext("http://localhost:9200");
+            dbContext.TryDropTable<User>();
+            dbContext.TryCreateTable<User>();
+            dbContext.Add(new User { id = 1, name = "lith" });
+            Thread.Sleep(2000);
 
             // #2 Query
             var user = dbContext.Get<User>(1);
@@ -77,9 +84,11 @@ namespace App
 
 ## Full Example
 > This example provides a comprehensive guide to utilizing Vitorm for basic and advanced database operations while maintaining lightweight performance.    
+> code address: [Program.cs](https://github.com/VitormLib/Vitorm.ElasticSearch/tree/master/test/Vitorm.ElasticSearch.Console/Program.cs)    
 ``` csharp
+using System;
+using System.Linq;
 using Vitorm;
-
 namespace App
 {
     public class Program
@@ -96,8 +105,8 @@ namespace App
             // #3 Insert Records
             dbContext.Add(new User { id = 1, name = "lith" });
             dbContext.AddRange(new[] {
-                new User { id = 2, name = "lith", fatherId = 1 },
-                new User { id = 3, name = "lith", fatherId = 1 }
+                new User {   id = 2, name = "lith", fatherId = 1 },
+                new User {   id = 3, name = "lith", fatherId = 1 }
             });
 
             // #4 Query Records
@@ -110,27 +119,28 @@ namespace App
             // #5 Update Records
             dbContext.Update(new User { id = 1, name = "lith1" });
             dbContext.UpdateRange(new[] {
-                new User { id = 2, name = "lith2", fatherId = 1 },
-                new User { id = 3, name = "lith3", fatherId = 2 }
+                new User {   id = 2, name = "lith2", fatherId = 1 },
+                new User {   id = 3, name = "lith3", fatherId = 2 }
             });
-            dbContext.Query<User>().Where(u => u.name.Contains("li"))
-                .ExecuteUpdate(u => new User { name = "Lith" + u.id });
+            //dbContext.Query<User>().Where(u => u.name.Contains("li"))
+            //    .ExecuteUpdate(u => new User { name = "Lith" + u.id });
 
             // #6 Delete Records
-            dbContext.Delete<User>(new User { id = 1, name = "lith1" });
+            dbContext.Delete<User>(new User { id = 1 });
             dbContext.DeleteRange(new[] {
-                new User { id = 2, name = "lith2", fatherId = 1 },
-                new User { id = 3, name = "lith3", fatherId = 2 }
+                new User {  id = 2 },
+                new User {  id = 3 }
             });
             dbContext.DeleteByKey<User>(1);
             dbContext.DeleteByKeys<User, int>(new[] { 1, 2 });
-            dbContext.Query<User>().Where(u => u.name.Contains("li"))
-                .ExecuteDelete();
+            //dbContext.Query<User>().Where(u => u.name.Contains("li"))
+            //    .ExecuteDelete();
 
             // #7 Join Queries
 
             // #8 Transactions
 
+            // #9 Database Functions
         }
 
         // Entity Definition
@@ -188,6 +198,7 @@ dotnet add package Vitorm.ElasticSearch
 
 ## Minimum viable demo
 > After configuring the `appsettings.json` file, you can directly perform queries without any additional configuration or initialization, `Vitorm.Data` is that easy to use.    
+> code address: [Program_Min.cs](https://github.com/VitormLib/Vitorm/tree/master/test/Vitorm.Data.Console/Program_Min.cs)    
 ``` csharp
 using Vitorm;
 namespace App
@@ -217,6 +228,7 @@ namespace App
 ```
 
 ## Full Example    
+> code address: [Program.cs](https://github.com/VitormLib/Vitorm/tree/master/test/Vitorm.Data.Console/Program.cs)    
 ``` csharp
 using Vitorm;
 
@@ -288,18 +300,7 @@ namespace App
 
 
 # Examples:  
-- [CRUD](test/Vitorm.ElasticSearch.MsTest/CommonTest/CRUD_Test.cs)    
-- [ToExecuteString](test/Vitorm.ElasticSearch.MsTest/CommonTest/Orm_Extensions_ToExecuteString_Test.cs)    
-    
-- [Query_LinqMethods](test/Vitorm.ElasticSearch.MsTest/CommonTest/Query_LinqMethods_Test.cs)  
-    
-- [Query_String](test/Vitorm.ElasticSearch.MsTest/CommonTest/Query_Type_String_Test.cs)  
-- [Query_String_Like](test/Vitorm.ElasticSearch.MsTest/CommonTest/Query_Type_String_Like_Test.cs)  
-    
-- [Query_Numric](test/Vitorm.ElasticSearch.MsTest/CommonTest/Query_Type_Numric_Test.cs)  
-    
-- [Save](test/Vitorm.ElasticSearch.MsTest/CustomTest/CRUD_Save_Test.cs)  
-- [Query_NestedField](test/Vitorm.ElasticSearch.MsTest/CustomTest/Query_NestedField_Test.cs)  
+[Test Example](https://github.com/VitormLib/Vitorm.ElasticSearch/tree/master/test/Vitorm.ElasticSearch.MsTest)    
 
 
 

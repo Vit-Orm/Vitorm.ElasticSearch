@@ -28,7 +28,7 @@ namespace Vitorm.ElasticSearch
             var searchResult = await self.QueryAsync<Entity>(queryPayload, indexName);
 
             var entityDescriptor = self.GetEntityDescriptor(typeof(Entity));
-            var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(entityDescriptor));
+            var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(self, entityDescriptor));
 
             if (select == null)
             {
@@ -68,7 +68,11 @@ namespace Vitorm.ElasticSearch
 
                 // #3.3 Query
                 // #3.3.1
-                if (stream is not CombinedStream combinedStream) combinedStream = new CombinedStream("tmp") { source = stream };
+                if (stream is StreamToUpdate) throw new NotSupportedException($"not supported {nameof(Orm_Extensions.ExecuteUpdate)}");
+                var combinedStream = stream as CombinedStream;
+                if (stream is SourceStream) combinedStream = new CombinedStream("tmp") { source = stream };
+
+                if (combinedStream.method == nameof(Orm_Extensions.ExecuteDelete)) throw new NotSupportedException($"not supported {nameof(Orm_Extensions.ExecuteDelete)}");
                 SourceStream source = combinedStream.source as SourceStream ?? throw new NotSupportedException("not supported nested query");
                 if (combinedStream.isGroupedStream) throw new NotSupportedException("not supported group query");
                 if (combinedStream.joins?.Any() == true) throw new NotSupportedException("not supported join query");
@@ -119,7 +123,7 @@ namespace Vitorm.ElasticSearch
 
 
                 var entityDescriptor = GetEntityDescriptor(typeof(Entity));
-                var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(entityDescriptor));
+                var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(this, entityDescriptor));
 
 
 

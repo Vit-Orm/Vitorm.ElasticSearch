@@ -24,6 +24,7 @@ namespace Vitorm.ElasticSearch
             return new(query.page) { totalCount = data.totalCount, items = data.items };
         }
 
+
         public virtual async Task<RangeData<Entity>> QueryAsync<Entity>(RangedQuery query)
         {
             var queryBody = new Dictionary<string, object>();
@@ -42,10 +43,13 @@ namespace Vitorm.ElasticSearch
                 }
 
                 // #3 skip take
+                int skip = 0;
                 if (query.range?.skip > 0)
-                    queryBody["from"] = query.range.skip;
-                if (query.range?.take > 0)
-                    queryBody["size"] = query.range.take;
+                    queryBody["from"] = skip = query.range.skip;
+
+                var take = query.range?.take >= 0 ? query.range.take : maxResultWindowSize;
+                if (take + skip > maxResultWindowSize) take = maxResultWindowSize - skip;
+                queryBody["size"] = take;
             }
             #endregion
 
@@ -54,7 +58,7 @@ namespace Vitorm.ElasticSearch
             var indexName = GetIndex<Entity>();
 
             var searchResult = await QueryAsync<Entity>(queryBody, indexName);
-            var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(entityDescriptor));
+            var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(this, entityDescriptor));
 
             var items = entities.ToList();
             var totalCount = searchResult?.hits?.total?.value ?? 0;

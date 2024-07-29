@@ -1,12 +1,16 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
+using Vit.Core.Module.Serialization;
 using Vit.Extensions;
+using Vit.Extensions.Serialize_Extensions;
 
 namespace Vitorm.ElasticSearch
 {
@@ -21,13 +25,14 @@ namespace Vitorm.ElasticSearch
             return await GetMappingAsync(indexName);
         }
 
-        public virtual async Task<string> GetMappingAsync(string indexName)
+        public virtual async Task<string> GetMappingAsync(string indexName, bool throwErrorIfFailed = false)
         {
             var searchUrl = $"{readOnlyServerAddress}/{indexName}/_mapping";
 
-            var httpResponse = await httpClient.GetAsync(searchUrl);
+            using var httpResponse = await httpClient.GetAsync(searchUrl);
             var strResponse = await httpResponse.Content.ReadAsStringAsync();
-            if (!httpResponse.IsSuccessStatusCode) throw new Exception(strResponse);
+
+            if (throwErrorIfFailed && !httpResponse.IsSuccessStatusCode) throw new Exception(strResponse);
             return strResponse;
         }
         #endregion
@@ -37,19 +42,100 @@ namespace Vitorm.ElasticSearch
         public virtual async Task TryCreateTableAsync<Entity>()
         {
             var indexName = GetIndex<Entity>();
-            await TryCreateTableAsync(indexName);
+            await TryCreateTableAsync<Entity>(indexName);
         }
-        public virtual async Task<string> TryCreateTableAsync(string indexName, bool throwErrorIfFailed = false)
+        public virtual async Task<string> TryCreateTableAsync<Entity>(string indexName, bool throwErrorIfFailed = false)
         {
             var url = $"{serverAddress}/{indexName}";
-            var strPayload = "{\"mappings\":{\"properties\":{\"@timestamp\":{\"type\":\"date\"},\"time\":{\"type\":\"date\"}}}}";
-            var content = new StringContent(strPayload, Encoding.UTF8, "application/json");
 
-            var httpResponse = await httpClient.PutAsync(url, content);
+            var strMapping = BuildMapping<Entity>();
+            var content = new StringContent(strMapping, Encoding.UTF8, "application/json");
+
+            using var httpResponse = await httpClient.PutAsync(url, content);
             var strResponse = await httpResponse.Content.ReadAsStringAsync();
 
             if (throwErrorIfFailed && !httpResponse.IsSuccessStatusCode) throw new Exception(strResponse);
             return strResponse;
+        }
+        public string dateFormat = "yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||epoch_millis";
+        public virtual string BuildMapping<Entity>()
+        {
+            /*
+{
+    "mappings":{
+        "properties":{
+            "birthday":{ "type":"date", "format":"yyyy-MM-dd HH:mm:ss||yyyy-MM-dd||strict_date_optional_time||epoch_millis" }
+        }
+    }
+}
+{
+    "mappings":{
+        "properties":{
+            "@timestamp":{
+                "type":"date"
+            },
+            "time":{
+                "type":"date"
+            }
+        }
+    }
+}
+             */
+            if (typeof(Entity) == typeof(object))
+            {
+                //var strMapping = "{\"mappings\":{\"properties\":{\"@timestamp\":{\"type\":\"date\"},\"time\":{\"type\":\"date\"}}}}";
+                return "{\"mappings\":{\"properties\":{}}}";
+            }
+            var properties = new Dictionary<string, object>();
+            var mapping = new { mappings = new { properties } };
+
+            AddProperties(typeof(Entity).GetProperties(BindingFlags.Public | BindingFlags.Instance), Array.Empty<Type>());
+
+            #region Add properties
+            void AddProperties(PropertyInfo[] propertyInfos, IEnumerable<Type> typeCache, string parentPath = null)
+            {
+                if (propertyInfos?.Any() != true) return;
+
+                foreach (PropertyInfo propertyInfo in propertyInfos)
+                {
+                    if (propertyInfo.GetCustomAttribute<System.ComponentModel.DataAnnotations.Schema.NotMappedAttribute>() != null)
+                        continue;
+
+                    var columnAttr = propertyInfo.GetCustomAttribute<System.ComponentModel.DataAnnotations.Schema.ColumnAttribute>();
+                    var columnName = columnAttr?.Name ?? propertyInfo.Name;
+                    var databaseType = columnAttr?.TypeName;
+                    var fieldPath = parentPath + columnName;
+
+                    var propertyType = propertyInfo.PropertyType;
+
+                    // Array or List
+                    if (propertyType.IsArray) propertyType = propertyType.GetElementType();
+                    else if (propertyType.IsGenericType && typeof(IEnumerable).IsAssignableFrom(propertyType))
+                    {
+                        //  IEnumerable<T>  or  IQueryable<T>
+                        propertyType = propertyType.GetGenericArguments()[0];
+                    }
+
+                    if (!propertyType.TypeIsValueTypeOrStringType() && !typeCache.Contains(propertyType))
+                    {
+                        var newTypeCache = typeCache.Concat(new[] { propertyType });
+                        AddProperties(propertyType.GetProperties(BindingFlags.Public | BindingFlags.Instance), newTypeCache, fieldPath + ".");
+                    }
+
+
+                    if (!string.IsNullOrEmpty(databaseType))
+                    {
+                        properties[fieldPath] = Json.Deserialize<object>(databaseType);
+                    }
+                    else if (propertyType == typeof(DateTime) || propertyType == typeof(DateTime?))
+                    {
+                        properties[fieldPath] = new { type = "date", format = dateFormat };
+                    }
+                }
+            }
+            #endregion
+
+            return Json.Serialize(mapping);
         }
         #endregion
 
@@ -63,7 +149,7 @@ namespace Vitorm.ElasticSearch
         public virtual async Task TryDropTableAsync(string indexName)
         {
             var url = $"{serverAddress}/{indexName}";
-            var httpResponse = await httpClient.DeleteAsync(url);
+            using var httpResponse = await httpClient.DeleteAsync(url);
 
             if (httpResponse.IsSuccessStatusCode) return;
 
@@ -86,10 +172,16 @@ namespace Vitorm.ElasticSearch
         {
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
 
-            var _id = entityDescriptor.key.GetValue(entity) as string;
-            var action = string.IsNullOrWhiteSpace(_id) ? "_doc" : "_create";
+            var _id = GetDocumentId(entityDescriptor, entity);
 
-            return await SingleActionAsync(entityDescriptor, entity, indexName, action);
+            if (String.IsNullOrEmpty(_id))
+            {
+                return await SingleActionAsync(entityDescriptor, entity, indexName, "_doc");
+            }
+            else
+            {
+                return await SingleActionAsync(entityDescriptor, entity, indexName, "_create");
+            }
         }
 
         #endregion
@@ -118,8 +210,7 @@ namespace Vitorm.ElasticSearch
                 var t = 0;
                 foreach (var entity in entities)
                 {
-                    var id = items[t].result?._id;
-                    if (id != null) entityDescriptor.key?.SetValue(entity, id);
+                    SetKey(entityDescriptor, entity, items[t].result?._id);
                     t++;
                 }
             }
@@ -140,7 +231,7 @@ namespace Vitorm.ElasticSearch
         {
             var actionUrl = $"{readOnlyServerAddress}/{indexName}/_doc/" + keyValue;
 
-            var httpResponse = await httpClient.GetAsync(actionUrl);
+            using var httpResponse = await httpClient.GetAsync(actionUrl);
 
             if (httpResponse.StatusCode == HttpStatusCode.NotFound)
             {
@@ -155,10 +246,11 @@ namespace Vitorm.ElasticSearch
             if (response.found != true) return default;
 
             var entity = response._source;
+
             if (entity != null && response._id != null)
             {
                 var entityDescriptor = GetEntityDescriptor(typeof(Entity));
-                entityDescriptor.key.SetValue(entity, response._id);
+                SetKey(entityDescriptor, entity, response._id);
             }
             return entity;
         }
@@ -203,10 +295,9 @@ namespace Vitorm.ElasticSearch
 
         public virtual async Task<int> UpdateRangeAsync<Entity>(IEnumerable<Entity> entities, string indexName)
         {
-            var key = GetEntityDescriptor(typeof(Entity)).key;
-            if (entities.Any(entity => string.IsNullOrWhiteSpace(key.GetValue(entity) as string))) throw new ArgumentNullException("_id");
-
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
+            if (entities.Any(entity => string.IsNullOrWhiteSpace(GetDocumentId(entityDescriptor, entity)))) throw new ArgumentNullException("_id");
+
             var bulkResult = await BulkAsync(entityDescriptor, entities, indexName, "update");
 
             if (bulkResult.items.Any() != true) ThrowException(bulkResult.responseBody);
@@ -230,6 +321,7 @@ namespace Vitorm.ElasticSearch
         public virtual async Task<int> SaveAsync<Entity>(Entity entity, string indexName)
         {
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
+
             entity = await SingleActionAsync(entityDescriptor, entity, indexName, "_doc");
             return entity != null ? 1 : 0;
         }
@@ -254,12 +346,10 @@ namespace Vitorm.ElasticSearch
             var items = bulkResult?.items;
             if (items?.Length == entities.Count())
             {
-                var key = entityDescriptor.key;
                 var t = 0;
                 foreach (var entity in entities)
                 {
-                    var id = items[t].result?._id;
-                    if (id != null) key.SetValue(entity, id);
+                    SetKey(entityDescriptor, entity, items[t].result?._id);
                     t++;
                 }
             }
@@ -279,7 +369,7 @@ namespace Vitorm.ElasticSearch
         {
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
 
-            var key = entityDescriptor.key.GetValue(entity);
+            var key = GetDocumentId(entityDescriptor, entity);
             return await DeleteByKeyAsync(key, indexName);
         }
 
@@ -289,14 +379,14 @@ namespace Vitorm.ElasticSearch
         {
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
 
-            var keys = entities.Select(entity => entityDescriptor.key.GetValue(entity)).ToList();
+            var keys = entities.Select(entity => GetDocumentId(entityDescriptor, entity)).ToList();
             return await DeleteByKeysAsync<Entity, object>(keys);
         }
         public virtual async Task<int> DeleteRangeAsync<Entity>(IEnumerable<Entity> entities, string indexName)
         {
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
 
-            var keys = entities.Select(entity => entityDescriptor.key.GetValue(entity)).ToList();
+            var keys = entities.Select(entity => GetDocumentId(entityDescriptor, entity)).ToList();
             return await DeleteByKeysAsync<Entity, object>(keys, indexName);
         }
 
@@ -314,7 +404,7 @@ namespace Vitorm.ElasticSearch
 
             var actionUrl = $"{serverAddress}/{indexName}/_doc/" + _id;
 
-            var httpResponse = await httpClient.DeleteAsync(actionUrl);
+            using var httpResponse = await httpClient.DeleteAsync(actionUrl);
             return httpResponse.IsSuccessStatusCode ? 1 : 0;
 
             //var strResponse = httpResponse.Content.ReadAsStringAsync().Result;
@@ -351,8 +441,8 @@ namespace Vitorm.ElasticSearch
                 payload.AppendLine($"{{\"delete\":{{\"_index\":\"{indexName}\",\"_id\":\"{_id}\"}}}}");
             }
             var actionUrl = $"{serverAddress}/{indexName}/_bulk";
-            var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
-            var httpResponse = await httpClient.PostAsync(actionUrl, content);
+            using var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
+            using var httpResponse = await httpClient.PostAsync(actionUrl, content);
 
             var strResponse = await httpResponse.Content.ReadAsStringAsync();
             if (string.IsNullOrWhiteSpace(strResponse)) httpResponse.EnsureSuccessStatusCode();

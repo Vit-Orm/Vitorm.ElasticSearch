@@ -34,17 +34,18 @@ namespace Vitorm.ElasticSearch
         }
 
 
-
-
         #region SingleActionAsync
-
-        protected virtual async Task<Entity> SingleActionAsync<Entity>(IEntityDescriptor entityDescriptor, Entity entity, string indexName, string action)
+        protected virtual async Task<Entity> SingleActionAsync<Entity>(IEntityDescriptor entityDescriptor, Entity entity, string indexName, string action, HttpMethod httpMethod = null)
         {
-            var _id = entityDescriptor.key.GetValue(entity) as string;
-            var actionUrl = $"{serverAddress}/{indexName}/{action}/{_id}";
-            var content = new StringContent(Serialize(entity), Encoding.UTF8, "application/json");
+            var _id = GetDocumentId(entityDescriptor, entity);
 
-            var response = await httpClient.PostAsync(actionUrl, content);
+            string actionUrl = $"{serverAddress}/{indexName}/{action}/{_id}";
+
+            using var content = new StringContent(Serialize(entity), Encoding.UTF8, "application/json");
+            using var httpRequestMessage = new HttpRequestMessage(httpMethod ?? HttpMethod.Post, actionUrl) { Content = content };
+
+            using HttpResponseMessage response = await httpClient.SendAsync(httpRequestMessage);
+
             var strResponse = await response.Content.ReadAsStringAsync();
 
             var result = Deserialize<AddResult>(strResponse);
@@ -55,11 +56,23 @@ namespace Vitorm.ElasticSearch
             }
             response.EnsureSuccessStatusCode();
 
-            _id = result._id;
-            if (_id != null) entityDescriptor.key?.SetValue(entity, _id);
+            SetKey(entityDescriptor, entity, result._id);
 
             return entity;
         }
+
+        protected virtual void SetKey<Entity>(IEntityDescriptor entityDescriptor, Entity entity, string _id)
+        {
+            if (entity == null || entityDescriptor?.key == null) return;
+
+            var keyType = TypeUtil.GetUnderlyingType(entityDescriptor.key.type);
+            var newKeyValue = TypeUtil.ConvertToUnderlyingType(_id, keyType);
+            if (newKeyValue != null)
+            {
+                entityDescriptor.key.SetValue(entity, newKeyValue);
+            }
+        }
+
         class AddResult
         {
             public string _index { get; set; }
@@ -121,7 +134,12 @@ namespace Vitorm.ElasticSearch
             {
                 foreach (var entity in entities)
                 {
-                    payload.AppendLine($"{{\"{action}\":{{\"_index\":\"{indexName}\",\"_id\":\"{GetDocumentId(entityDescriptor, entity)}\"}}}}");
+                    var docId = GetDocumentId(entityDescriptor, entity);
+                    if (string.IsNullOrEmpty(docId))
+                    {
+                        throw new ArgumentException("key could not be null in BulkUpdate");
+                    }
+                    payload.AppendLine($"{{\"{action}\":{{\"_index\":\"{indexName}\",\"_id\":\"{docId}\"}}}}");
                     payload.Append("{\"doc\":").Append(Serialize(entity)).AppendLine("}");
                 }
             }
@@ -129,20 +147,34 @@ namespace Vitorm.ElasticSearch
             {
                 foreach (var entity in entities)
                 {
-                    payload.AppendLine($"{{\"{action}\":{{\"_index\":\"{indexName}\",\"_id\":\"{GetDocumentId(entityDescriptor, entity)}\"}}}}");
+                    var docId = GetDocumentId(entityDescriptor, entity);
+                    if (string.IsNullOrEmpty(docId))
+                    {
+                        throw new ArgumentException("key could not be null in BulkDelete");
+                    }
+                    payload.AppendLine($"{{\"{action}\":{{\"_index\":\"{indexName}\",\"_id\":\"{docId}\"}}}}");
                 }
             }
             else
             {
+                // index
                 foreach (var entity in entities)
                 {
-                    payload.AppendLine($"{{\"{action}\":{{\"_index\":\"{indexName}\",\"_id\":\"{GetDocumentId(entityDescriptor, entity)}\"}}}}");
+                    var docId = GetDocumentId(entityDescriptor, entity);
+                    if (string.IsNullOrEmpty(docId))
+                    {
+                        payload.AppendLine($"{{\"{action}\":{{\"_index\":\"{indexName}\"}}}}");
+                    }
+                    else
+                    {
+                        payload.AppendLine($"{{\"{action}\":{{\"_index\":\"{indexName}\",\"_id\":\"{GetDocumentId(entityDescriptor, entity)}\"}}}}");
+                    }
                     payload.AppendLine(Serialize(entity));
                 }
             }
             var actionUrl = $"{serverAddress}/{indexName}/_bulk";
-            var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
-            var httpResponse = await httpClient.PostAsync(actionUrl, content);
+            using var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
+            using var httpResponse = await httpClient.PostAsync(actionUrl, content);
 
             var strResponse = await httpResponse.Content.ReadAsStringAsync();
             if (string.IsNullOrWhiteSpace(strResponse)) httpResponse.EnsureSuccessStatusCode();
@@ -153,17 +185,6 @@ namespace Vitorm.ElasticSearch
             return response;
         }
 
-
-        /*
-        POST _bulk
-        { "index" : { "_index" : "test", "_id" : "1" } }
-        { "field1" : "value1" }
-        { "delete" : { "_index" : "test", "_id" : "2" } }
-        { "create" : { "_index" : "test", "_id" : "3" } }
-        { "field1" : "value3" }
-        { "update" : {"_id" : "1", "_index" : "test"} }
-        { "doc" : {"field2" : "value2"} }         
-         */
         public class BulkResponse
         {
             public string responseBody { get; set; }
