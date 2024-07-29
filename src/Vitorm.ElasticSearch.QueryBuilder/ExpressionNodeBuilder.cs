@@ -9,13 +9,40 @@ namespace Vitorm.ElasticSearch
 {
     public class ExpressionNodeBuilder
     {
+        public ExpressionNodeBuilder()
+        {
+            AddConvertor(String_Extensions.Like_ConvertToQuery, nameof(String_Extensions.Like));
+            AddConvertor(String_Extensions.Match_ConvertToQuery, nameof(String_Extensions.Match));
+        }
+
+
+
+        #region convertors
+        public delegate (bool success, object query) Convertor(ExpressionNodeBuilder builder, ExpressionNode data);
+
+        public List<(string groupName, Convertor convert)> convertors = new();
+        public virtual void AddConvertor(Convertor convertor, string groupName = null)
+        {
+            convertors.Add((groupName, convertor));
+        }
+        #endregion
+
+
+
+
+        #region ConvertToQuery
+
         public virtual object ConvertToQuery(ExpressionNode data)
         {
             if (data == null) return new { match_all = new { } };
             return ConvertExpressionNodeToQuery(data);
         }
 
-        public virtual object ConvertExpressionNodeToQuery(ExpressionNode data)
+
+        public Dictionary<string, string> conditionTypeMap
+          = new Dictionary<string, string> { [NodeType.AndAlso] = "filter", [NodeType.OrElse] = "should", [NodeType.Not] = "must_not" };
+
+        protected virtual object ConvertExpressionNodeToQuery(ExpressionNode data)
         {
             switch (data.nodeType)
             {
@@ -182,48 +209,35 @@ namespace Vitorm.ElasticSearch
                                         return new { terms = new Dictionary<string, object> { [field] = value } };
                                     }
                                 }
-
-                            // ##3 String.Like
-                            case nameof(String_Extensions.Like):
-                                {
-                                    ExpressionNode memberNode = methodCall.arguments[0];
-                                    ExpressionNode valueNode = methodCall.arguments[1];
-                                    var field = GetNodeField(memberNode);
-                                    var value = GetNodeValue(valueNode);
-
-                                    // { "wildcard": { "name.keyword": "*lith*" } }
-                                    return GetCondition_StringLike(field, value);
-                                }
-
-                            // ##4 String.Match
-                            case nameof(String_Extensions.Match):
-                                {
-                                    ExpressionNode memberNode = methodCall.arguments[0];
-                                    ExpressionNode valueNode = methodCall.arguments[1];
-                                    var field = GetNodeField(memberNode);
-                                    var value = GetNodeValue(valueNode);
-
-                                    // { "match": { "name": "lith" } }
-                                    return new { match = new Dictionary<string, object> { [field] = value } };
-                                }
                         }
                         break;
                     }
             }
+
+            foreach (var convertor in convertors)
+            {
+                var result = convertor.convert(this, data);
+                if (result.success) return result.query;
+            }
+
             throw new NotSupportedException("not supported nodeType: " + data.nodeType);
         }
 
-        protected virtual object GetCondition_StringLike(string field, object value)
+        static object GetCondition_StringLike(string field, object value)
         {
             // { "wildcard": { "name.keyword": "*lith*" } }
             return new { wildcard = new Dictionary<string, object> { [field + ".keyword"] = value } };
         }
+        #endregion
 
-        protected static string[] FieldMethodNames = new[] { nameof(NestedField_Extensions.Who), nameof(Object_Extensions_Convert.Convert), nameof(Object_Extensions_Property.Property) };
+
+        #region GetNodeField
+
+        public List<string> fieldMethodNames = new() { nameof(NestedField_Extensions.Who), nameof(Object_Extensions_Convert.Convert), nameof(Object_Extensions_Property.Property) };
         public virtual bool NodeIsField(ExpressionNode node)
         {
             if (node.nodeType == NodeType.Member) return true;
-            if (node.nodeType == NodeType.MethodCall && FieldMethodNames.Contains(node.methodName))
+            if (node.nodeType == NodeType.MethodCall && fieldMethodNames.Contains(node.methodName))
                 return true;
             return false;
         }
@@ -311,13 +325,10 @@ namespace Vitorm.ElasticSearch
             return parent + "." + memberName;
         }
 
-        public virtual object GetNodeValue(ExpressionNode_Constant data)
-        {
-            return data?.value;
-        }
+        #endregion
+
+        public virtual object GetNodeValue(ExpressionNode_Constant data) => data?.value;
 
 
-        public Dictionary<string, string> conditionTypeMap
-          = new Dictionary<string, string> { [NodeType.AndAlso] = "filter", [NodeType.OrElse] = "should", [NodeType.Not] = "must_not" };
     }
 }

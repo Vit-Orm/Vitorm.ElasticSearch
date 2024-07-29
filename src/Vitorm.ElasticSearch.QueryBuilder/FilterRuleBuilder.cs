@@ -111,6 +111,10 @@ namespace Vitorm.ElasticSearch
             (nameof(String_Extensions.Match),OperatorConvertor_String),
         };
 
+        public virtual void AddConvertor(string Operator, Func<FilterRuleBuilder, IFilterRule, string, object> convertor)
+        {
+            operatorConvertors.Add((Operator, convertor));
+        }
 
         public virtual object ConvertOperatorToQuery(IFilterRule filter, string Operator)
         {
