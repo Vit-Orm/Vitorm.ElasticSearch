@@ -8,6 +8,12 @@ namespace Vitorm.ElasticSearch
 {
     public class FilterRuleBuilder
     {
+        public FilterRuleBuilder()
+        {
+            AddConvertor(nameof(String_Extensions.Like), String_Extensions.Like_ConvertToQuery);
+            AddConvertor(nameof(String_Extensions.Match), String_Extensions.Match_ConvertToQuery);
+        }
+
         public virtual object ConvertToQuery(IFilterRule filter)
         {
             if (filter == null) return new { match_all = new { } };
@@ -17,7 +23,7 @@ namespace Vitorm.ElasticSearch
         public virtual object ConvertFilterToQuery(IFilterRule filter) => ConvertConditionToQuery(filter, GetRuleCondition(filter));
 
         public bool operatorIsIgnoreCase = true;
-        protected StringComparison comparison => operatorIsIgnoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        public StringComparison comparison => operatorIsIgnoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
         protected Dictionary<string, string> operatorMap = new Dictionary<string, string>();
 
         public virtual FilterRuleBuilder AddOperatorMap(string operatorName, string operatorType)
@@ -51,8 +57,8 @@ namespace Vitorm.ElasticSearch
 
             return filter.condition;
         }
-        protected virtual string GetField(IFilterRule filter) => filter?.field;
-        protected virtual object GetValue(IFilterRule filter) => filter?.value;
+        public virtual string GetField(IFilterRule filter) => filter?.field;
+        public virtual object GetValue(IFilterRule filter) => filter?.value;
 
         public virtual object ConvertConditionToQuery(IFilterRule filter, string condition)
         {
@@ -84,7 +90,11 @@ namespace Vitorm.ElasticSearch
             return ConvertOperatorToQuery(filter, Operator);
         }
 
-        public List<(string Operator, Func<FilterRuleBuilder, IFilterRule, string, object> convertor)> operatorConvertors = new() {
+        #region OperatorConvertor
+        public delegate object Convertor(FilterRuleBuilder builder, IFilterRule filter, string Operator);
+
+
+        public List<(string Operator, Convertor convertor)> operatorConvertors = new() {
             // Equal
             (RuleOperator.Equal,OperatorConvertor_Equal),
             (RuleOperator.NotEqual,OperatorConvertor_NotEqual),
@@ -107,14 +117,15 @@ namespace Vitorm.ElasticSearch
             (RuleOperator.Contains,OperatorConvertor_String),
             (RuleOperator.StartsWith,OperatorConvertor_String),
             (RuleOperator.EndsWith,OperatorConvertor_String),
-            (nameof(String_Extensions.Like),OperatorConvertor_String),
-            (nameof(String_Extensions.Match),OperatorConvertor_String),
         };
 
-        public virtual void AddConvertor(string Operator, Func<FilterRuleBuilder, IFilterRule, string, object> convertor)
+        public virtual void AddConvertor(string Operator, Convertor convertor)
         {
             operatorConvertors.Add((Operator, convertor));
         }
+
+
+        #endregion
 
         public virtual object ConvertOperatorToQuery(IFilterRule filter, string Operator)
         {
@@ -146,25 +157,57 @@ namespace Vitorm.ElasticSearch
             var field = builder.GetField(filter);
             var value = builder.GetValue(filter);
 
+            object query;
+
             // == null
             if (value == null)
             {
                 // {"bool":{"must_not":{"exists":{"field":"address"}}}}
-                return new { @bool = new { must_not = new { exists = new { field = field } } } };
+                query = new { exists = new { field = field } };
+                query = OperatorConvertor_Not(query);
+                return query;
             }
 
             if (value.GetType() == typeof(string))
             {
                 // {"term":{"name.keyword":"lith" } }
-                return new { term = new Dictionary<string, object> { [field + ".keyword"] = value } };
+                query = new { term = new Dictionary<string, object> { [field + ".keyword"] = value } };
             }
             else
             {
                 // {"term":{"name":"lith" } }
-                return new { term = new Dictionary<string, object> { [field] = value } };
+                query = new { term = new Dictionary<string, object> { [field] = value } };
             }
+            return query;
         }
-        public static object OperatorConvertor_NotEqual(FilterRuleBuilder builder, IFilterRule filter, string Operator) => OperatorConvertor_Not(OperatorConvertor_Equal(builder, filter, Operator));
+        public static object OperatorConvertor_NotEqual(FilterRuleBuilder builder, IFilterRule filter, string Operator)
+        {
+            var field = builder.GetField(filter);
+            var value = builder.GetValue(filter);
+
+            object query;
+
+            // == null
+            if (value == null)
+            {
+                // {"bool":{"must_not":{"exists":{"field":"address"}}}}
+                query = new { exists = new { field = field } };
+                return query;
+            }
+
+            if (value.GetType() == typeof(string))
+            {
+                // {"term":{"name.keyword":"lith" } }
+                query = new { term = new Dictionary<string, object> { [field + ".keyword"] = value } };
+            }
+            else
+            {
+                // {"term":{"name":"lith" } }
+                query = new { term = new Dictionary<string, object> { [field] = value } };
+            }
+            query = OperatorConvertor_Not(query);
+            return query;
+        }
 
         public static object OperatorConvertor_IsNotNull(FilterRuleBuilder builder, IFilterRule filter, string Operator)
         {
@@ -200,7 +243,7 @@ namespace Vitorm.ElasticSearch
             var field = builder.GetField(filter);
             var value = builder.GetValue(filter);
 
-            if (value?.GetType() == typeof(string))
+            if (Vit.Linq.LinqHelp.GetElementType(value?.GetType()) == typeof(string))
             {
                 // {"terms":{"name":["lith1","lith2"] } }
                 return new { terms = new Dictionary<string, object> { [field + ".keyword"] = value } };
@@ -214,22 +257,12 @@ namespace Vitorm.ElasticSearch
         public static object OperatorConvertor_NotIn(FilterRuleBuilder builder, IFilterRule filter, string Operator) => OperatorConvertor_Not(OperatorConvertor_In(builder, filter, Operator));
 
 
-
         public static object OperatorConvertor_String(FilterRuleBuilder builder, IFilterRule filter, string Operator)
         {
             var field = builder.GetField(filter);
             var value = builder.GetValue(filter);
 
-            if (nameof(String_Extensions.Match).Equals(Operator, builder.comparison))
-            {
-                // { "match": { "name": "lith" } }
-                return new { match = new Dictionary<string, object> { [field] = value } };
-            }
-
-            if (nameof(String_Extensions.Like).Equals(Operator, builder.comparison))
-            {
-            }
-            else if (RuleOperator.Contains.Equals(Operator, builder.comparison))
+            if (RuleOperator.Contains.Equals(Operator, builder.comparison))
             {
                 value = "*" + value + "*";
             }
@@ -243,14 +276,14 @@ namespace Vitorm.ElasticSearch
             }
 
             // { "wildcard": { "name.keyword": "*lith*" } }
-            return builder.GetCondition_StringLike(field, value);
+            return GetCondition_StringLike(field, value);
         }
-        protected virtual object GetCondition_StringLike(string field, object value)
+
+        public static object GetCondition_StringLike(string field, object value)
         {
             // { "wildcard": { "name.keyword": "*lith*" } }
             return new { wildcard = new Dictionary<string, object> { [field + ".keyword"] = value } };
         }
-
         #endregion
 
 
