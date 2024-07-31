@@ -79,7 +79,7 @@ namespace Vitorm.ElasticSearch
                 if (combinedStream.distinct != null) throw new NotSupportedException("not supported distinct query");
 
 
-                var queryPayload = ConvertStreamToQuery(combinedStream);
+                var queryPayload = ConvertStreamToQueryPayload(combinedStream);
 
 
                 if (combinedStream.method == nameof(Queryable_Extensions.TotalCount) || combinedStream.method == nameof(Queryable.Count))
@@ -116,7 +116,7 @@ namespace Vitorm.ElasticSearch
                 if (combinedStream.method == nameof(Queryable_Extensions.ToListAsync))
                 {
                     var resultEntityType = expression.Type.GetGenericArguments()[0].GetGenericArguments()[0];
-                    return MethodInfo_ToListAsync(typeof(Entity), resultEntityType).Invoke(null, new[] { this, expression, queryPayload, select, indexName });
+                    return MethodInfo_ToListAsync(typeof(Entity), resultEntityType).Invoke(null, new object[] { this, expression, queryPayload, select, indexName });
                 }
 
                 var searchResult = Query<Entity>(queryPayload, indexName);

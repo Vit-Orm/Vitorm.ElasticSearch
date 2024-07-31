@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using System.Threading.Tasks;
 
 using Vit.Linq.ComponentModel;
@@ -19,7 +18,7 @@ namespace Vitorm.ElasticSearch
 
         public virtual async Task<PageData<Entity>> QueryAsync<Entity>(PagedQuery query)
         {
-            var data = await QueryAsync<Entity>(query.ToRangedQuery());
+            var data = await QueryAsync<Entity>(query);
 
             return new(query.page) { totalCount = data.totalCount, items = data.items };
         }
@@ -27,37 +26,12 @@ namespace Vitorm.ElasticSearch
 
         public virtual async Task<RangeData<Entity>> QueryAsync<Entity>(RangedQuery query)
         {
-            var queryBody = new Dictionary<string, object>();
-
-            #region queryBody
-            {
-                // #1 where
-                queryBody["query"] = filterRuleBuilder.ConvertToQuery(query.filter);
-
-                // #2 orders
-                if (query.orders?.Any() == true)
-                {
-                    queryBody["sort"] = query.orders
-                                     .Select(order => new Dictionary<string, object> { [order.field] = new { order = order.asc ? "asc" : "desc" } })
-                                     .ToList();
-                }
-
-                // #3 skip take
-                int skip = 0;
-                if (query.range?.skip > 0)
-                    queryBody["from"] = skip = query.range.skip;
-
-                var take = query.range?.take >= 0 ? query.range.take : maxResultWindowSize;
-                if (take + skip > maxResultWindowSize) take = maxResultWindowSize - skip;
-                queryBody["size"] = take;
-            }
-            #endregion
-
+            var queryPayload = filterRuleBuilder.ConvertToQueryPayload(query, maxResultWindowSize: maxResultWindowSize, track_total_hits: track_total_hits);
 
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
             var indexName = GetIndex<Entity>();
 
-            var searchResult = await QueryAsync<Entity>(queryBody, indexName);
+            var searchResult = await QueryAsync<Entity>(queryPayload, indexName);
             var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(this, entityDescriptor));
 
             var items = entities.ToList();

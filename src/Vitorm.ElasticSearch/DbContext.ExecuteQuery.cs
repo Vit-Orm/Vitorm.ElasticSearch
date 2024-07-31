@@ -19,6 +19,10 @@ namespace Vitorm.ElasticSearch
         /// {"type":"illegal_argument_exception","reason":"Result window is too large, from + size must be less than or equal to: [10000] but was [10001]. See the scroll api for a more efficient way to request large data sets. This limit can be set by changing the [index.max_result_window] index level setting."}
         /// </summary>
         public int maxResultWindowSize = 10000;
+        /// <summary>
+        /// https://www.elastic.co/guide/en/elasticsearch/reference/7.0/search-request-track-total-hits.html
+        /// </summary>
+        public bool track_total_hits = false;
 
 
         protected virtual Delegate BuildSelect(Type entityType, ExpressionNode selectedFields, string entityParameterName)
@@ -72,30 +76,40 @@ namespace Vitorm.ElasticSearch
 
         public ExpressionNodeBuilder expressionNodeBuilder = defaultExpressionNodeBuilder;
 
-        public virtual object ConvertStreamToQuery(CombinedStream combinedStream)
+        public virtual Dictionary<string, object> ConvertStreamToQueryPayload(CombinedStream combinedStream)
         {
-            var queryBody = new Dictionary<string, object>();
+            var queryPayload = new Dictionary<string, object>();
 
             // #1 where
-            queryBody["query"] = expressionNodeBuilder.ConvertToQuery(combinedStream.where);
+            queryPayload["query"] = expressionNodeBuilder.ConvertToQuery(combinedStream.where);
 
             // #2 orders
             if (combinedStream.orders?.Any() == true)
             {
-                queryBody["sort"] = combinedStream.orders
-                                 .Select(order => new Dictionary<string, object> { [expressionNodeBuilder.GetNodeField(order.member)] = new { order = order.asc ? "asc" : "desc" } })
+                queryPayload["sort"] = combinedStream.orders
+                                 .Select(order =>
+                                 {
+                                     var field = expressionNodeBuilder.GetNodeField(order.member, out var fieldType);
+                                     if (fieldType == typeof(string)) field += ".keyword";
+                                     return new Dictionary<string, object> { [field] = new { order = order.asc ? "asc" : "desc" } };
+                                 })
                                  .ToList();
             }
 
             // #3 skip take
             int skip = 0;
             if (combinedStream.skip > 0)
-                queryBody["from"] = skip = combinedStream.skip.Value;
+                queryPayload["from"] = skip = combinedStream.skip.Value;
 
             var take = combinedStream.take >= 0 ? combinedStream.take.Value : maxResultWindowSize;
             if (take + skip > maxResultWindowSize) take = maxResultWindowSize - skip;
-            queryBody["size"] = take;
-            return queryBody;
+            queryPayload["size"] = take;
+
+
+            // #4 track_total_hits
+            if (track_total_hits) queryPayload["track_total_hits"] = true;
+
+            return queryPayload;
         }
 
 

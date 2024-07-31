@@ -29,7 +29,6 @@ namespace Vitorm.ElasticSearch
 
 
 
-
         #region ConvertToQuery
 
         public virtual object ConvertToQuery(ExpressionNode data)
@@ -79,7 +78,7 @@ namespace Vitorm.ElasticSearch
                             memberNode = binary.right;
                             valueNode = binary.left;
                         }
-                        var field = GetNodeField(memberNode);
+                        var field = GetNodeField(memberNode, out var fieldType);
                         var value = GetNodeValue(valueNode);
 
                         if (value == null)
@@ -97,7 +96,7 @@ namespace Vitorm.ElasticSearch
                             }
                         }
                         object condition;
-                        if (memberNode.Member_GetType() == typeof(string))
+                        if (fieldType == typeof(string))
                         {
                             // {"term":{"name.keyword":"lith" } }
                             condition = new { term = new Dictionary<string, object> { [field + ".keyword"] = value } };

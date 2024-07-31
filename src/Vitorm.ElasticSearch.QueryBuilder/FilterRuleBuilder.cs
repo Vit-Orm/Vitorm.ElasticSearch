@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 
+using Vit.Linq.ComponentModel;
 using Vit.Linq.Filter.ComponentModel;
 
 namespace Vitorm.ElasticSearch
@@ -13,6 +14,38 @@ namespace Vitorm.ElasticSearch
             AddConvertor(nameof(String_Extensions.Like), String_Extensions.Like_ConvertToQuery);
             AddConvertor(nameof(String_Extensions.Match), String_Extensions.Match_ConvertToQuery);
         }
+
+        public virtual Dictionary<string, object> ConvertToQueryPayload(RangedQuery query, int maxResultWindowSize = 10000, bool track_total_hits = false)
+        {
+            var queryBody = new Dictionary<string, object>();
+
+            // #1 where
+            queryBody["query"] = ConvertToQuery(query.filter);
+
+            // #2 orders
+            if (query.orders?.Any() == true)
+            {
+                queryBody["sort"] = query.orders
+                                 .Select(order => new Dictionary<string, object> { [order.field] = new { order = order.asc ? "asc" : "desc" } })
+                                 .ToList();
+            }
+
+            // #3 skip take
+            int skip = 0;
+            if (query.range?.skip > 0)
+                queryBody["from"] = skip = query.range.skip;
+
+            var take = query.range?.take >= 0 ? query.range.take : maxResultWindowSize;
+            if (take + skip > maxResultWindowSize) take = maxResultWindowSize - skip;
+            queryBody["size"] = take;
+
+
+            // #4 track_total_hits
+            if (track_total_hits) queryBody["track_total_hits"] = true;
+
+            return queryBody;
+        }
+
 
         public virtual object ConvertToQuery(IFilterRule filter)
         {
