@@ -5,6 +5,8 @@ using System.Linq;
 
 using Vit.Linq.ExpressionTree.ComponentModel;
 
+using Convertor = System.Func<Vitorm.ElasticSearch.ExpressionNodeBuilder, Vit.Linq.ExpressionTree.ComponentModel.ExpressionNode, (bool success, object query)>;
+
 namespace Vitorm.ElasticSearch
 {
     public class ExpressionNodeBuilder
@@ -18,7 +20,6 @@ namespace Vitorm.ElasticSearch
 
 
         #region convertors
-        public delegate (bool success, object query) Convertor(ExpressionNodeBuilder builder, ExpressionNode data);
 
         public List<(string groupName, Convertor convert)> convertors = new();
         public virtual void AddConvertor(Convertor convertor, string groupName = null)

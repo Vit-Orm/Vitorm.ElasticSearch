@@ -5,6 +5,8 @@ using System.Linq;
 using Vit.Linq.ComponentModel;
 using Vit.Linq.Filter.ComponentModel;
 
+using Convertor = System.Func<Vitorm.ElasticSearch.FilterRuleBuilder, Vit.Linq.Filter.ComponentModel.IFilterRule, string, object>;
+
 namespace Vitorm.ElasticSearch
 {
     public class FilterRuleBuilder
@@ -124,8 +126,6 @@ namespace Vitorm.ElasticSearch
         }
 
         #region OperatorConvertor
-        public delegate object Convertor(FilterRuleBuilder builder, IFilterRule filter, string Operator);
-
 
         public List<(string Operator, Convertor convertor)> operatorConvertors = new() {
             // Equal
