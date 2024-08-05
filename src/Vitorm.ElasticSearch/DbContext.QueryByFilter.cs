@@ -18,7 +18,7 @@ namespace Vitorm.ElasticSearch
 
         public virtual async Task<PageData<Entity>> QueryAsync<Entity>(PagedQuery query)
         {
-            var data = await QueryAsync<Entity>(query);
+            var data = await QueryAsync<Entity>(query.ToRangedQuery());
 
             return new(query.page) { totalCount = data.totalCount, items = data.items };
         }
@@ -26,7 +26,7 @@ namespace Vitorm.ElasticSearch
 
         public virtual async Task<RangeData<Entity>> QueryAsync<Entity>(RangedQuery query)
         {
-            var queryPayload = filterRuleBuilder.ConvertToQueryPayload(query, maxResultWindowSize: maxResultWindowSize, track_total_hits: track_total_hits);
+            var queryPayload = filterRuleBuilder.ConvertToQueryPayload<Entity>(query, maxResultWindowSize: maxResultWindowSize, track_total_hits: track_total_hits);
 
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
             var indexName = GetIndex<Entity>();

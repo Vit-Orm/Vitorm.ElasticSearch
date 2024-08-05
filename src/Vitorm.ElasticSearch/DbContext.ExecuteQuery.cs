@@ -87,13 +87,13 @@ namespace Vitorm.ElasticSearch
             if (combinedStream.orders?.Any() == true)
             {
                 queryPayload["sort"] = combinedStream.orders
-                                 .Select(order =>
-                                 {
-                                     var field = expressionNodeBuilder.GetNodeField(order.member, out var fieldType);
-                                     if (fieldType == typeof(string)) field += ".keyword";
-                                     return new Dictionary<string, object> { [field] = new { order = order.asc ? "asc" : "desc" } };
-                                 })
-                                 .ToList();
+                    .Select(order =>
+                    {
+                        var field = expressionNodeBuilder.GetNodeField(order.member, out var fieldType);
+                        if (fieldType == typeof(string)) field += ".keyword";
+                        return new Dictionary<string, object> { [field] = new { order = order.asc ? "asc" : "desc" } };
+                    })
+                    .ToList();
             }
 
             // #3 skip take

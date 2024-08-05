@@ -2,13 +2,24 @@
 using System.Collections.Generic;
 using System.Linq;
 
+using Vit.Linq;
 using Vit.Linq.ComponentModel;
 using Vit.Linq.Filter.ComponentModel;
 
-using Convertor = System.Func<Vitorm.ElasticSearch.FilterRuleBuilder, Vit.Linq.Filter.ComponentModel.IFilterRule, string, object>;
+using Convertor = System.Func<Vitorm.ElasticSearch.FilterRuleConvertArgrument, Vit.Linq.Filter.ComponentModel.IFilterRule, string, object>;
 
 namespace Vitorm.ElasticSearch
 {
+    public class FilterRuleConvertArgrument
+    {
+        public FilterRuleBuilder builder { get; set; }
+        public Type entityType { get; set; }
+
+        public int? maxResultWindowSize { get; set; }
+        public bool? track_total_hits { get; set; }
+    }
+
+
     public class FilterRuleBuilder
     {
         public FilterRuleBuilder()
@@ -17,19 +28,31 @@ namespace Vitorm.ElasticSearch
             AddConvertor(nameof(String_Extensions.Match), String_Extensions.Match_ConvertToQuery);
         }
 
+        public virtual Dictionary<string, object> ConvertToQueryPayload<Entity>(RangedQuery query, int maxResultWindowSize = 10000, bool track_total_hits = false)
+        {
+            var arg = new FilterRuleConvertArgrument() { builder = this, maxResultWindowSize = maxResultWindowSize, track_total_hits = track_total_hits };
+            arg.entityType = typeof(Entity);
+            return ConvertToQueryPayload(arg, query);
+        }
+
         public virtual Dictionary<string, object> ConvertToQueryPayload(RangedQuery query, int maxResultWindowSize = 10000, bool track_total_hits = false)
+        {
+            var arg = new FilterRuleConvertArgrument() { builder = this, maxResultWindowSize = maxResultWindowSize, track_total_hits = track_total_hits };
+            return ConvertToQueryPayload(arg, query);
+        }
+
+
+        public virtual Dictionary<string, object> ConvertToQueryPayload(FilterRuleConvertArgrument arg, RangedQuery query)
         {
             var queryBody = new Dictionary<string, object>();
 
             // #1 where
-            queryBody["query"] = ConvertToQuery(query.filter);
+            queryBody["query"] = ConvertToQuery(arg, query.filter);
 
             // #2 orders
             if (query.orders?.Any() == true)
             {
-                queryBody["sort"] = query.orders
-                                 .Select(order => new Dictionary<string, object> { [order.field] = new { order = order.asc ? "asc" : "desc" } })
-                                 .ToList();
+                queryBody["sort"] = ConvertSort(arg, query.orders);
             }
 
             // #3 skip take
@@ -37,25 +60,53 @@ namespace Vitorm.ElasticSearch
             if (query.range?.skip > 0)
                 queryBody["from"] = skip = query.range.skip;
 
+            var maxResultWindowSize = arg.maxResultWindowSize ?? 10000;
             var take = query.range?.take >= 0 ? query.range.take : maxResultWindowSize;
             if (take + skip > maxResultWindowSize) take = maxResultWindowSize - skip;
             queryBody["size"] = take;
 
 
             // #4 track_total_hits
-            if (track_total_hits) queryBody["track_total_hits"] = true;
+            if (arg.track_total_hits == true) queryBody["track_total_hits"] = true;
 
             return queryBody;
         }
 
-
-        public virtual object ConvertToQuery(IFilterRule filter)
+        public virtual object ConvertSort(FilterRuleConvertArgrument arg, List<OrderField> orders)
         {
-            if (filter == null) return new { match_all = new { } };
-            return ConvertFilterToQuery(filter);
+            if (arg.entityType == null)
+            {
+                return orders.Select(order => new Dictionary<string, object> { [order.field] = new { order = order.asc ? "asc" : "desc" } }).ToList();
+            }
+
+            return orders.Select(order =>
+            {
+                var field = order.field;
+                var fieldType = GetFieldType(arg, field);
+                if (fieldType == typeof(string) && !field.EndsWith(".keyword"))
+                    field += ".keyword";
+
+                return new Dictionary<string, object> { [field] = new { order = order.asc ? "asc" : "desc" } };
+            })
+                .ToList();
         }
 
-        public virtual object ConvertFilterToQuery(IFilterRule filter) => ConvertConditionToQuery(filter, GetRuleCondition(filter));
+        public virtual object ConvertToQuery<Entity>(IFilterRule filter)
+        {
+            return ConvertToQuery(new() { builder = this, entityType = typeof(Entity) }, filter);
+        }
+        public virtual object ConvertToQuery(IFilterRule filter)
+        {
+            return ConvertToQuery(new() { builder = this }, filter);
+        }
+
+        public virtual object ConvertToQuery(FilterRuleConvertArgrument arg, IFilterRule filter)
+        {
+            if (filter == null) return new { match_all = new { } };
+            return ConvertFilterToQuery(arg, filter);
+        }
+
+        public virtual object ConvertFilterToQuery(FilterRuleConvertArgrument arg, IFilterRule filter) => ConvertConditionToQuery(arg, filter, GetRuleCondition(filter));
 
         public bool operatorIsIgnoreCase = true;
         public StringComparison comparison => operatorIsIgnoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
@@ -92,10 +143,25 @@ namespace Vitorm.ElasticSearch
 
             return filter.condition;
         }
-        public virtual string GetField(IFilterRule filter) => filter?.field;
-        public virtual object GetValue(IFilterRule filter) => filter?.value;
+        public virtual string GetField(FilterRuleConvertArgrument arg, IFilterRule filter) => filter?.field;
+        public virtual Type GetFieldType(FilterRuleConvertArgrument arg, string field)
+        {
+            if (!string.IsNullOrWhiteSpace(field) && arg.entityType != null)
+            {
+                return LinqHelp.GetNestedMemberType(arg.entityType, field);
+            }
+            return null;
+        }
+        public virtual string GetField(FilterRuleConvertArgrument arg, IFilterRule filter, out Type fieldType)
+        {
+            var field = GetField(arg, filter);
+            fieldType = GetFieldType(arg, field);
+            return field;
+        }
 
-        public virtual object ConvertConditionToQuery(IFilterRule filter, string condition)
+        public virtual object GetValue(FilterRuleConvertArgrument arg, IFilterRule filter) => filter?.value;
+
+        public virtual object ConvertConditionToQuery(FilterRuleConvertArgrument arg, IFilterRule filter, string condition)
         {
             switch (condition)
             {
@@ -104,25 +170,25 @@ namespace Vitorm.ElasticSearch
                 case RuleCondition.NotAnd:
                     {
                         var conditionType = conditionTypeMap[condition];
-                        var conditions = filter.rules?.Select(ConvertToQuery).ToArray();
+                        var conditions = filter.rules?.Select(filter => ConvertToQuery(arg, filter)).ToArray();
                         return new { @bool = new Dictionary<string, object> { [conditionType] = conditions } };
                     }
                 case RuleCondition.Not:
                     {
                         var conditionType = conditionTypeMap[condition];
-                        var conditions = filter.rules?.Select(ConvertToQuery).ToArray();
-                        if (conditions == null) conditions = new[] { ConvertConditionToQuery(filter, null) };
+                        var conditions = filter.rules?.Select(filter => ConvertToQuery(arg, filter)).ToArray();
+                        if (conditions == null) conditions = new[] { ConvertConditionToQuery(arg, filter, null) };
                         return new { @bool = new Dictionary<string, object> { [conditionType] = conditions } };
                     }
                 case RuleCondition.NotOr:
                     {
                         var conditionType = conditionTypeMap[RuleCondition.Not];
-                        var conditions = filter.rules?.Select(filter => ConvertConditionToQuery(filter, RuleCondition.Or)).ToArray();
+                        var conditions = filter.rules?.Select(filter => ConvertConditionToQuery(arg, filter, RuleCondition.Or)).ToArray();
                         return new { @bool = new Dictionary<string, object> { [conditionType] = conditions } };
                     }
             }
             var Operator = GetOperator(filter);
-            return ConvertOperatorToQuery(filter, Operator);
+            return ConvertOperatorToQuery(arg, filter, Operator);
         }
 
         #region OperatorConvertor
@@ -160,19 +226,19 @@ namespace Vitorm.ElasticSearch
 
         #endregion
 
-        public virtual object ConvertOperatorToQuery(IFilterRule filter, string Operator)
+        public virtual object ConvertOperatorToQuery(FilterRuleConvertArgrument arg, IFilterRule filter, string Operator)
         {
             var convertor = operatorConvertors.FirstOrDefault(item => Operator?.Equals(item.Operator, comparison) == true).convertor;
-            if (convertor != null) return convertor(this, filter, Operator);
+            if (convertor != null) return convertor(arg, filter, Operator);
 
             if (Operator.StartsWith("Not", comparison))
             {
-                var conditions = ConvertOperatorToQuery(filter, Operator.Substring(3));
+                var conditions = ConvertOperatorToQuery(arg, filter, Operator.Substring(3));
                 return OperatorConvertor_Not(conditions);
             }
             else if (Operator.StartsWith("!", comparison))
             {
-                var conditions = ConvertOperatorToQuery(filter, Operator.Substring(1));
+                var conditions = ConvertOperatorToQuery(arg, filter, Operator.Substring(1));
                 return OperatorConvertor_Not(conditions);
             }
 
@@ -185,10 +251,11 @@ namespace Vitorm.ElasticSearch
         }
 
         #region OperatorConvertor
-        public static object OperatorConvertor_Equal(FilterRuleBuilder builder, IFilterRule filter, string Operator)
+        public static object OperatorConvertor_Equal(FilterRuleConvertArgrument arg, IFilterRule filter, string Operator)
         {
-            var field = builder.GetField(filter);
-            var value = builder.GetValue(filter);
+            Type valueType;
+            var field = arg.builder.GetField(arg, filter, out valueType);
+            var value = arg.builder.GetValue(arg, filter);
 
             object query;
 
@@ -201,7 +268,8 @@ namespace Vitorm.ElasticSearch
                 return query;
             }
 
-            if (value.GetType() == typeof(string))
+            valueType ??= value.GetType();
+            if (valueType == typeof(string))
             {
                 // {"term":{"name.keyword":"lith" } }
                 query = new { term = new Dictionary<string, object> { [field + ".keyword"] = value } };
@@ -213,10 +281,11 @@ namespace Vitorm.ElasticSearch
             }
             return query;
         }
-        public static object OperatorConvertor_NotEqual(FilterRuleBuilder builder, IFilterRule filter, string Operator)
+        public static object OperatorConvertor_NotEqual(FilterRuleConvertArgrument arg, IFilterRule filter, string Operator)
         {
-            var field = builder.GetField(filter);
-            var value = builder.GetValue(filter);
+            Type valueType;
+            var field = arg.builder.GetField(arg, filter, out valueType);
+            var value = arg.builder.GetValue(arg, filter);
 
             object query;
 
@@ -227,8 +296,8 @@ namespace Vitorm.ElasticSearch
                 query = new { exists = new { field = field } };
                 return query;
             }
-
-            if (value.GetType() == typeof(string))
+            valueType ??= value.GetType();
+            if (valueType == typeof(string))
             {
                 // {"term":{"name.keyword":"lith" } }
                 query = new { term = new Dictionary<string, object> { [field + ".keyword"] = value } };
@@ -242,21 +311,22 @@ namespace Vitorm.ElasticSearch
             return query;
         }
 
-        public static object OperatorConvertor_IsNotNull(FilterRuleBuilder builder, IFilterRule filter, string Operator)
+        public static object OperatorConvertor_IsNotNull(FilterRuleConvertArgrument arg, IFilterRule filter, string Operator)
         {
-            var field = builder.GetField(filter);
+            var field = arg.builder.GetField(arg, filter, out var valueType);
 
             // {"exists":{"field":"address"}}
             return new { exists = new { field = field } };
         }
-        public static object OperatorConvertor_IsNull(FilterRuleBuilder builder, IFilterRule filter, string Operator) => OperatorConvertor_Not(OperatorConvertor_IsNotNull(builder, filter, Operator));
+        public static object OperatorConvertor_IsNull(FilterRuleConvertArgrument arg, IFilterRule filter, string Operator)
+            => OperatorConvertor_Not(OperatorConvertor_IsNotNull(arg, filter, Operator));
 
 
 
-        public static object OperatorConvertor_Compare(FilterRuleBuilder builder, IFilterRule filter, string Operator)
+        public static object OperatorConvertor_Compare(FilterRuleConvertArgrument arg, IFilterRule filter, string Operator)
         {
-            var field = builder.GetField(filter);
-            var value = builder.GetValue(filter);
+            var field = arg.builder.GetField(arg, filter, out var valueType);
+            var value = arg.builder.GetValue(arg, filter);
 
             //  { "range": { "age": { "gte": 10, "lte": 20 } } }
             string optType = Operator switch
@@ -271,12 +341,13 @@ namespace Vitorm.ElasticSearch
         }
 
 
-        public static object OperatorConvertor_In(FilterRuleBuilder builder, IFilterRule filter, string Operator)
+        public static object OperatorConvertor_In(FilterRuleConvertArgrument arg, IFilterRule filter, string Operator)
         {
-            var field = builder.GetField(filter);
-            var value = builder.GetValue(filter);
+            var field = arg.builder.GetField(arg, filter, out var valueType);
+            var value = arg.builder.GetValue(arg, filter);
 
-            if (Vit.Linq.LinqHelp.GetElementType(value?.GetType()) == typeof(string))
+            valueType ??= value.GetType();
+            if (Vit.Linq.LinqHelp.GetElementType(valueType) == typeof(string))
             {
                 // {"terms":{"name":["lith1","lith2"] } }
                 return new { terms = new Dictionary<string, object> { [field + ".keyword"] = value } };
@@ -287,23 +358,24 @@ namespace Vitorm.ElasticSearch
                 return new { terms = new Dictionary<string, object> { [field] = value } };
             }
         }
-        public static object OperatorConvertor_NotIn(FilterRuleBuilder builder, IFilterRule filter, string Operator) => OperatorConvertor_Not(OperatorConvertor_In(builder, filter, Operator));
+        public static object OperatorConvertor_NotIn(FilterRuleConvertArgrument arg, IFilterRule filter, string Operator)
+            => OperatorConvertor_Not(OperatorConvertor_In(arg, filter, Operator));
 
 
-        public static object OperatorConvertor_String(FilterRuleBuilder builder, IFilterRule filter, string Operator)
+        public static object OperatorConvertor_String(FilterRuleConvertArgrument arg, IFilterRule filter, string Operator)
         {
-            var field = builder.GetField(filter);
-            var value = builder.GetValue(filter);
+            var field = arg.builder.GetField(arg, filter, out var valueType);
+            var value = arg.builder.GetValue(arg, filter);
 
-            if (RuleOperator.Contains.Equals(Operator, builder.comparison))
+            if (RuleOperator.Contains.Equals(Operator, arg.builder.comparison))
             {
                 value = "*" + value + "*";
             }
-            else if (RuleOperator.StartsWith.Equals(Operator, builder.comparison))
+            else if (RuleOperator.StartsWith.Equals(Operator, arg.builder.comparison))
             {
                 value = value + "*";
             }
-            else if (RuleOperator.EndsWith.Equals(Operator, builder.comparison))
+            else if (RuleOperator.EndsWith.Equals(Operator, arg.builder.comparison))
             {
                 value = "*" + value;
             }

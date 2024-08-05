@@ -161,6 +161,40 @@ namespace Vitorm.MsTest.QueryBuilder
 
 
 
+        [TestMethod]
+        public async Task Test_Sort()
+        {
+            using var dbContext = DataSource.CreateDbContext();
+            var userQuery = dbContext.Query<User>();
+
+            var builder = dbContext.filterRuleBuilder;
+
+            {
+                var strQuery = "{    'orders':[{'field':'name.keyword','asc':false}],  'page':{'pageSize':10, 'pageIndex':1}  }".Replace("'", "\"");
+                var query = Json.Deserialize<PagedQuery>(strQuery);
+
+                var queryBody = builder.ConvertToQuery<User>(query.filter);
+                var strRequest = Json.Serialize(queryBody);
+
+                var result = await dbContext.QueryAsync<User>(query);
+                Assert.AreEqual(6, result.totalCount);
+                Assert.AreEqual(6, result.items[0].id);
+            }
+            {
+                var strQuery = "{    'orders':[{'field':'name','asc':false}],  'page':{'pageSize':10, 'pageIndex':1}  }".Replace("'", "\"");
+                var query = Json.Deserialize<PagedQuery>(strQuery);
+
+                var queryBody = builder.ConvertToQuery<User>(query.filter);
+                var strRequest = Json.Serialize(queryBody);
+
+                var result = await dbContext.QueryAsync<User>(query);
+                Assert.AreEqual(6, result.totalCount);
+                Assert.AreEqual(6, result.items[0].id);
+            }
+        }
+
+
+
 
 
     }
