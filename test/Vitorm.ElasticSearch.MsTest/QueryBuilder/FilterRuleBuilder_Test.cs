@@ -25,7 +25,7 @@ namespace Vitorm.MsTest.QueryBuilder
                 var strQuery = "{ 'filter':{'field':'children.id',  'operator': '=',  'value': 1 },  'orders':[{'field':'id','asc':false}],  'page':{'pageSize':2, 'pageIndex':1}  }".Replace("'", "\"");
                 var query = Json.Deserialize<PagedQuery>(strQuery);
 
-                var queryBody = builder.ConvertToQuery(query.filter);
+                var queryBody = builder.ConvertToQuery<User>(query.filter);
                 var strRequest = Json.Serialize(queryBody);
 
                 var result = await dbContext.QueryAsync<User>(query);
@@ -36,7 +36,7 @@ namespace Vitorm.MsTest.QueryBuilder
                 var strQuery = "{ 'filter':{'field':'id',  'operator': 'eQuals',  'value': 1 },  'orders':[{'field':'id','asc':false}],  'page':{'pageSize':2, 'pageIndex':1}  }".Replace("'", "\"");
                 var query = Json.Deserialize<PagedQuery>(strQuery);
 
-                var queryBody = builder.ConvertToQuery(query.filter);
+                var queryBody = builder.ConvertToQuery<User>(query.filter);
                 var strRequest = Json.Serialize(queryBody);
 
                 var result = await dbContext.QueryAsync<User>(query);
@@ -48,7 +48,7 @@ namespace Vitorm.MsTest.QueryBuilder
                 var strQuery = "{ 'filter':{'field':'id',  'operator': '!=',  'value': 1 },  'orders':[{'field':'id','asc':false}],  'page':{'pageSize':2, 'pageIndex':1}  }".Replace("'", "\"");
                 var query = Json.Deserialize<PagedQuery>(strQuery);
 
-                var queryBody = builder.ConvertToQuery(query.filter);
+                var queryBody = builder.ConvertToQuery<User>(query.filter);
                 var strRequest = Json.Serialize(queryBody);
 
                 var result = await dbContext.QueryAsync<User>(query);
@@ -59,7 +59,7 @@ namespace Vitorm.MsTest.QueryBuilder
                 var strQuery = "{ 'filter':{'field':'id',  'operator': 'In',  'value': [1,2,3] },  'orders':[{'field':'id','asc':false}],  'page':{'pageSize':2, 'pageIndex':1}  }".Replace("'", "\"");
                 var query = Json.Deserialize<PagedQuery>(strQuery);
 
-                var queryBody = builder.ConvertToQuery(query.filter);
+                var queryBody = builder.ConvertToQuery<User>(query.filter);
                 var strRequest = Json.Serialize(queryBody);
 
                 var result = await dbContext.QueryAsync<User>(query);
@@ -67,10 +67,31 @@ namespace Vitorm.MsTest.QueryBuilder
                 Assert.AreEqual(3, result.items[0].id);
             }
             {
+                var strQuery = "{ 'filter':{'field':'name',  'operator': 'In',  'value': ['u146'] },  'orders':[{'field':'id','asc':false}],  'page':{'pageSize':2, 'pageIndex':1}  }".Replace("'", "\"");
+                var query = Json.Deserialize<PagedQuery>(strQuery);
+
+                var queryBody = builder.ConvertToQuery<User>(query.filter);
+                var strRequest = Json.Serialize(queryBody);
+
+                var result = await dbContext.QueryAsync<User>(query);
+                Assert.AreEqual(1, result.totalCount);
+            }
+            {
+                var strQuery = "{ 'filter':{'field':'name',  'operator': 'In',  'value': ['u146'] },  'orders':[{'field':'id','asc':false}],  'page':{'pageSize':2, 'pageIndex':1}  }".Replace("'", "\"");
+                var query = Json.Deserialize<PagedQuery>(strQuery);
+                query.filter.value = new[] { "u146" };
+
+                var queryBody = builder.ConvertToQuery(query.filter);
+                var strRequest = Json.Serialize(queryBody);
+
+                var result = await dbContext.QueryAsync<object>(query, "user");
+                Assert.AreEqual(1, result.totalCount);
+            }
+            {
                 var strQuery = "{ 'filter':{'field':'id',  'operator': 'NotIn',  'value': [1,2,3] },  'orders':[{'field':'id','asc':false}],  'page':{'pageSize':2, 'pageIndex':1}  }".Replace("'", "\"");
                 var query = Json.Deserialize<PagedQuery>(strQuery);
 
-                var queryBody = builder.ConvertToQuery(query.filter);
+                var queryBody = builder.ConvertToQuery<User>(query.filter);
                 var strRequest = Json.Serialize(queryBody);
 
                 var result = await dbContext.QueryAsync<User>(query);
@@ -81,7 +102,7 @@ namespace Vitorm.MsTest.QueryBuilder
                 var strQuery = "{ 'filter':{'condition':'not', 'field':'id',  'operator': 'In',  'value': [1,2,3] },  'orders':[{'field':'id','asc':false}],  'page':{'pageSize':2, 'pageIndex':1}  }".Replace("'", "\"");
                 var query = Json.Deserialize<PagedQuery>(strQuery);
 
-                var queryBody = builder.ConvertToQuery(query.filter);
+                var queryBody = builder.ConvertToQuery<User>(query.filter);
                 var strRequest = Json.Serialize(queryBody);
 
                 var result = await dbContext.QueryAsync<User>(query);
@@ -92,7 +113,7 @@ namespace Vitorm.MsTest.QueryBuilder
                 var strQuery = "{ 'filter':{'condition':'not', 'rules':[{'field':'id',  'operator': 'In',  'value': [1,2,3] }] },  'orders':[{'field':'id','asc':false}],  'page':{'pageSize':2, 'pageIndex':1}  }".Replace("'", "\"");
                 var query = Json.Deserialize<PagedQuery>(strQuery);
 
-                var queryBody = builder.ConvertToQuery(query.filter);
+                var queryBody = builder.ConvertToQuery<User>(query.filter);
                 var strRequest = Json.Serialize(queryBody);
 
                 var result = await dbContext.QueryAsync<User>(query);

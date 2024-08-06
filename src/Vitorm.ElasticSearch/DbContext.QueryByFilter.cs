@@ -24,12 +24,12 @@ namespace Vitorm.ElasticSearch
         }
 
 
-        public virtual async Task<RangeData<Entity>> QueryAsync<Entity>(RangedQuery query)
+        public virtual async Task<RangeData<Entity>> QueryAsync<Entity>(RangedQuery query, string indexName = null)
         {
             var queryPayload = filterRuleBuilder.ConvertToQueryPayload<Entity>(query, maxResultWindowSize: maxResultWindowSize, track_total_hits: track_total_hits);
 
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
-            var indexName = GetIndex<Entity>();
+            indexName ??= GetIndex<Entity>();
 
             var searchResult = await QueryAsync<Entity>(queryPayload, indexName);
             var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(this, entityDescriptor));

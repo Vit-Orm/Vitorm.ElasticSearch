@@ -346,8 +346,8 @@ namespace Vitorm.ElasticSearch
             var field = arg.builder.GetField(arg, filter, out var valueType);
             var value = arg.builder.GetValue(arg, filter);
 
-            valueType ??= value.GetType();
-            if (Vit.Linq.LinqHelp.GetElementType(valueType) == typeof(string))
+            valueType ??= Vit.Linq.LinqHelp.GetElementType(value.GetType());
+            if (valueType == typeof(string))
             {
                 // {"terms":{"name":["lith1","lith2"] } }
                 return new { terms = new Dictionary<string, object> { [field + ".keyword"] = value } };
