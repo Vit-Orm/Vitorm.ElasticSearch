@@ -3,20 +3,21 @@ using System.Collections.Generic;
 
 using Vit.Linq.ExpressionTree.ComponentModel;
 using Vit.Linq.ExpressionTree.ExpressionConvertor.MethodCalls;
+using Vit.Linq.Filter.ComponentModel;
 
 namespace Vitorm.ElasticSearch
 {
     public static partial class String_Extensions
     {
 
-        [CustomMethodAttribute]
+        [CustomMethod]
         public static bool Like(this string source, string target) => throw new NotImplementedException();
 
-        [CustomMethodAttribute]
+        [CustomMethod]
         public static bool Match(this string source, string target) => throw new NotImplementedException();
 
-
-        public static (bool success, object query) Like_ConvertToQuery(ExpressionNodeBuilder builder, ExpressionNode data)
+        #region ExpressionNode
+        public static (bool success, object query) Like_ConvertToQuery(ExpressionNodeConvertArgrument arg, ExpressionNode data)
         {
             if (data.nodeType == NodeType.MethodCall && data.methodName == nameof(String_Extensions.Like))
             {
@@ -24,8 +25,8 @@ namespace Vitorm.ElasticSearch
 
                 ExpressionNode memberNode = methodCall.arguments[0];
                 ExpressionNode valueNode = methodCall.arguments[1];
-                var field = builder.GetNodeField(memberNode);
-                var value = builder.GetNodeValue(valueNode);
+                var field = arg.builder.GetNodeField(arg, memberNode);
+                var value = arg.builder.GetNodeValue(arg, valueNode);
 
                 // { "wildcard": { "name.keyword": "*lith*" } }
                 var query = new { wildcard = new Dictionary<string, object> { [field + ".keyword"] = value } };
@@ -34,7 +35,7 @@ namespace Vitorm.ElasticSearch
             return default;
         }
 
-        public static (bool success, object query) Match_ConvertToQuery(ExpressionNodeBuilder builder, ExpressionNode data)
+        public static (bool success, object query) Match_ConvertToQuery(ExpressionNodeConvertArgrument arg, ExpressionNode data)
         {
             if (data.nodeType == NodeType.MethodCall && data.methodName == nameof(String_Extensions.Match))
             {
@@ -42,8 +43,8 @@ namespace Vitorm.ElasticSearch
 
                 ExpressionNode memberNode = methodCall.arguments[0];
                 ExpressionNode valueNode = methodCall.arguments[1];
-                var field = builder.GetNodeField(memberNode);
-                var value = builder.GetNodeValue(valueNode);
+                var field = arg.builder.GetNodeField(arg, memberNode);
+                var value = arg.builder.GetNodeValue(arg, valueNode);
 
                 // { "match": { "name": "lith" } }
                 var query = new { match = new Dictionary<string, object> { [field] = value } };
@@ -51,5 +52,28 @@ namespace Vitorm.ElasticSearch
             }
             return default;
         }
+
+        #endregion
+
+
+        #region FilterRule
+        public static object Like_ConvertToQuery(FilterRuleConvertArgrument arg, IFilterRule filter, string Operator)
+        {
+            var field = arg.builder.GetField(arg, filter);
+            var value = arg.builder.GetValue(arg, filter);
+
+            // { "wildcard": { "name.keyword": "*lith*" } }
+            return new { wildcard = new Dictionary<string, object> { [field + ".keyword"] = value } };
+        }
+        public static object Match_ConvertToQuery(FilterRuleConvertArgrument arg, IFilterRule filter, string Operator)
+        {
+            var field = arg.builder.GetField(arg, filter);
+            var value = arg.builder.GetValue(arg, filter);
+
+            // { "match": { "name": "lith" } }
+            return new { match = new Dictionary<string, object> { [field] = value } };
+        }
+        #endregion
+
     }
 }

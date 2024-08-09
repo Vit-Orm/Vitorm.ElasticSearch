@@ -1,5 +1,9 @@
 ﻿# Vitorm.ElasticSearch ReleaseLog
 
+-----------------------
+# 2.0.3
+- support BatchQuery by ElasticSearch scroll api
+- support BatchAsync
 
 -----------------------
 # 2.0.2

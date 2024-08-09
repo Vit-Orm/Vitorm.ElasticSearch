@@ -5,8 +5,16 @@ using System.Linq;
 
 using Vit.Linq.ExpressionTree.ComponentModel;
 
+using Convertor = System.Func<Vitorm.ElasticSearch.ExpressionNodeConvertArgrument, Vit.Linq.ExpressionTree.ComponentModel.ExpressionNode, (bool success, object query)>;
+
 namespace Vitorm.ElasticSearch
 {
+    public class ExpressionNodeConvertArgrument
+    {
+        public ExpressionNodeBuilder builder { get; set; }
+    }
+
+
     public class ExpressionNodeBuilder
     {
         public ExpressionNodeBuilder()
@@ -18,7 +26,6 @@ namespace Vitorm.ElasticSearch
 
 
         #region convertors
-        public delegate (bool success, object query) Convertor(ExpressionNodeBuilder builder, ExpressionNode data);
 
         public List<(string groupName, Convertor convert)> convertors = new();
         public virtual void AddConvertor(Convertor convertor, string groupName = null)
@@ -29,20 +36,19 @@ namespace Vitorm.ElasticSearch
 
 
 
-
         #region ConvertToQuery
 
         public virtual object ConvertToQuery(ExpressionNode data)
         {
             if (data == null) return new { match_all = new { } };
-            return ConvertExpressionNodeToQuery(data);
+            return ConvertExpressionNodeToQuery(new() { builder = this }, data);
         }
 
 
         public Dictionary<string, string> conditionTypeMap
           = new Dictionary<string, string> { [NodeType.AndAlso] = "filter", [NodeType.OrElse] = "should", [NodeType.Not] = "must_not" };
 
-        protected virtual object ConvertExpressionNodeToQuery(ExpressionNode data)
+        protected virtual object ConvertExpressionNodeToQuery(ExpressionNodeConvertArgrument arg, ExpressionNode data)
         {
             switch (data.nodeType)
             {
@@ -51,14 +57,14 @@ namespace Vitorm.ElasticSearch
                     {
                         ExpressionNode_Binary binary = data;
                         var conditionType = conditionTypeMap[data.nodeType];
-                        var condition = new[] { ConvertExpressionNodeToQuery(binary.left), ConvertExpressionNodeToQuery(binary.right) };
+                        var condition = new[] { ConvertExpressionNodeToQuery(arg, binary.left), ConvertExpressionNodeToQuery(arg, binary.right) };
                         return new { @bool = new Dictionary<string, object> { [conditionType] = condition } };
                     }
                 case NodeType.Not:
                     {
                         ExpressionNode_Not notNode = data;
                         var conditionType = conditionTypeMap[NodeType.Not];
-                        var condition = new[] { ConvertExpressionNodeToQuery(notNode.body) };
+                        var condition = new[] { ConvertExpressionNodeToQuery(arg, notNode.body) };
                         // {"bool":{"must_not":{"exists":{"field":"address"}}}}
                         return new { @bool = new Dictionary<string, object> { [conditionType] = condition } };
                     }
@@ -69,7 +75,7 @@ namespace Vitorm.ElasticSearch
                         ExpressionNode memberNode;
                         ExpressionNode valueNode;
                         string operation = binary.nodeType;
-                        if (NodeIsField(binary.left))
+                        if (NodeIsField(arg, binary.left))
                         {
                             memberNode = binary.left;
                             valueNode = binary.right;
@@ -79,8 +85,8 @@ namespace Vitorm.ElasticSearch
                             memberNode = binary.right;
                             valueNode = binary.left;
                         }
-                        var field = GetNodeField(memberNode);
-                        var value = GetNodeValue(valueNode);
+                        var field = GetNodeField(arg, memberNode, out var fieldType);
+                        var value = GetNodeValue(arg, valueNode);
 
                         if (value == null)
                         {
@@ -97,7 +103,7 @@ namespace Vitorm.ElasticSearch
                             }
                         }
                         object condition;
-                        if (memberNode.Member_GetType() == typeof(string))
+                        if (fieldType == typeof(string))
                         {
                             // {"term":{"name.keyword":"lith" } }
                             condition = new { term = new Dictionary<string, object> { [field + ".keyword"] = value } };
@@ -124,7 +130,7 @@ namespace Vitorm.ElasticSearch
                         ExpressionNode memberNode;
                         ExpressionNode valueNode;
                         string operation = binary.nodeType;
-                        if (NodeIsField(binary.left))
+                        if (NodeIsField(arg, binary.left))
                         {
                             memberNode = binary.left;
                             valueNode = binary.right;
@@ -136,8 +142,8 @@ namespace Vitorm.ElasticSearch
                             if (operation.StartsWith("LessThan")) operation = operation.Replace("LessThan", "GreaterThan");
                             else operation = operation.Replace("GreaterThan", "LessThan");
                         }
-                        var field = GetNodeField(memberNode, out var fieldType);
-                        var value = GetNodeValue(valueNode);
+                        var field = GetNodeField(arg, memberNode, out var fieldType);
+                        var value = GetNodeValue(arg, valueNode);
 
 
                         //  { "range": { "age": { "gte": 10, "lte": 20 } } }
@@ -168,24 +174,24 @@ namespace Vitorm.ElasticSearch
                                 {
                                     ExpressionNode memberNode = methodCall.@object;
                                     ExpressionNode valueNode = methodCall.arguments[0];
-                                    var field = GetNodeField(memberNode);
-                                    var value = GetNodeValue(valueNode) + "*";
+                                    var field = GetNodeField(arg, memberNode);
+                                    var value = GetNodeValue(arg, valueNode) + "*";
                                     return GetCondition_StringLike(field, value);
                                 }
                             case nameof(string.EndsWith): // String.EndsWith
                                 {
                                     ExpressionNode memberNode = methodCall.@object;
                                     ExpressionNode valueNode = methodCall.arguments[0];
-                                    var field = GetNodeField(memberNode);
-                                    var value = "*" + GetNodeValue(valueNode);
+                                    var field = GetNodeField(arg, memberNode);
+                                    var value = "*" + GetNodeValue(arg, valueNode);
                                     return GetCondition_StringLike(field, value);
                                 }
                             case nameof(string.Contains) when methodCall.methodCall_typeName == "String": // String.Contains
                                 {
                                     ExpressionNode memberNode = methodCall.@object;
                                     ExpressionNode valueNode = methodCall.arguments[0];
-                                    var field = GetNodeField(memberNode);
-                                    var value = "*" + GetNodeValue(valueNode) + "*";
+                                    var field = GetNodeField(arg, memberNode);
+                                    var value = "*" + GetNodeValue(arg, valueNode) + "*";
                                     return GetCondition_StringLike(field, value);
                                 }
                             #endregion
@@ -195,8 +201,8 @@ namespace Vitorm.ElasticSearch
                                 {
                                     ExpressionNode valueNode = methodCall.arguments[0];
                                     ExpressionNode memberNode = methodCall.arguments[1];
-                                    var field = GetNodeField(memberNode);
-                                    var value = GetNodeValue(valueNode);
+                                    var field = GetNodeField(arg, memberNode);
+                                    var value = GetNodeValue(arg, valueNode);
 
                                     if (memberNode.Member_GetType() == typeof(string))
                                     {
@@ -216,7 +222,7 @@ namespace Vitorm.ElasticSearch
 
             foreach (var convertor in convertors)
             {
-                var result = convertor.convert(this, data);
+                var result = convertor.convert(arg, data);
                 if (result.success) return result.query;
             }
 
@@ -233,8 +239,14 @@ namespace Vitorm.ElasticSearch
 
         #region GetNodeField
 
-        public List<string> fieldMethodNames = new() { nameof(NestedField_Extensions.Who), nameof(Object_Extensions_Convert.Convert), nameof(Object_Extensions_Property.Property) };
-        public virtual bool NodeIsField(ExpressionNode node)
+        public List<string> fieldMethodNames = new()
+        {
+            nameof(NestedField_Extensions.Who),
+            nameof(Object_Extensions_Convert.Convert),
+            nameof(Object_Extensions_Property.Property),
+        };
+
+        public virtual bool NodeIsField(ExpressionNodeConvertArgrument arg, ExpressionNode node)
         {
             if (node.nodeType == NodeType.Member) return true;
             if (node.nodeType == NodeType.MethodCall && fieldMethodNames.Contains(node.methodName))
@@ -242,9 +254,9 @@ namespace Vitorm.ElasticSearch
             return false;
         }
 
-        public virtual string GetNodeField(ExpressionNode data) => GetNodeField(data, out _);
-
-        public virtual string GetNodeField(ExpressionNode data, out Type type)
+        public virtual string GetNodeField(ExpressionNodeConvertArgrument arg, ExpressionNode data) => GetNodeField(arg, data, out _);
+        public virtual string GetNodeField(ExpressionNode data, out Type type) => GetNodeField(new() { builder = this }, data, out type);
+        public virtual string GetNodeField(ExpressionNodeConvertArgrument arg, ExpressionNode data, out Type type)
         {
             if (data?.nodeType == NodeType.MethodCall)
             {
@@ -256,19 +268,19 @@ namespace Vitorm.ElasticSearch
                         {
                             //  NestedField
                             ExpressionNode node = methodCall.arguments[0];
-                            return GetNodeField(node);
+                            return GetNodeField(arg, node);
                         }
                     case nameof(Object_Extensions_Convert.Convert):
                         {
                             ExpressionNode node = methodCall.arguments[0];
-                            return GetNodeField(node);
+                            return GetNodeField(arg, node);
                         }
                     case nameof(Object_Extensions_Property.Property):
                         {
                             ExpressionNode node = methodCall.arguments[0];
                             ExpressionNode_Constant path = methodCall.arguments[1];
                             var propertyPath = path.value as string;
-                            var field = GetNodeField(node);
+                            var field = GetNodeField(arg, node);
                             if (string.IsNullOrEmpty(field)) return propertyPath;
                             return $"{field}.{propertyPath}";
                         }
@@ -286,12 +298,12 @@ namespace Vitorm.ElasticSearch
             {
                 if (data.objectValue?.nodeType == NodeType.Member)
                 {
-                    parent = GetNodeField(data.objectValue);
+                    parent = GetNodeField(arg, data.objectValue);
                     parentType = data.objectValue.Member_GetType();
                 }
                 else if (data.objectValue?.nodeType == NodeType.MethodCall)
                 {
-                    parent = GetNodeField(data.objectValue);
+                    parent = GetNodeField(arg, data.objectValue);
                     parentType = data.objectValue.MethodCall_GetReturnType();
                 }
                 else
@@ -327,7 +339,7 @@ namespace Vitorm.ElasticSearch
 
         #endregion
 
-        public virtual object GetNodeValue(ExpressionNode_Constant data) => data?.value;
+        public virtual object GetNodeValue(ExpressionNodeConvertArgrument arg, ExpressionNode_Constant data) => data?.value;
 
 
     }

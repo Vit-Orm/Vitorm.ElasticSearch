@@ -101,6 +101,32 @@ namespace Vitorm.MsTest.CustomTest
 
         }
 
+        [TestMethod]
+        public void Test_OrderByKeyword()
+        {
+            using var dbContext = DataSource.CreateDbContext();
+            var userQuery = dbContext.Query<User>();
+
+            {
+                var query = userQuery.Where(user => user.father != null);
+                query = query.OrderByDescending(m => m.name);
+                var strQuery = query.ToExecuteString();
+                var userList = query.ToList();
+                Assert.AreEqual(3, userList.Count);
+                Assert.AreEqual("u356", userList[0].name);
+            }
+            {
+                var query = userQuery.Where(user => user.father != null);
+                query = query.OrderBy(m => m.fatherId).ThenByDescending(m => m.id);
+                var strQuery = query.ToExecuteString();
+                var userList = query.ToList();
+                Assert.AreEqual(3, userList.Count);
+                Assert.AreEqual(2, userList[0].id);
+            }
+
+
+        }
+
 
 
     }

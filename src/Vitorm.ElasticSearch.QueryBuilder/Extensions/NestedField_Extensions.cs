@@ -12,7 +12,7 @@ namespace Vitorm.ElasticSearch
     public static partial class NestedField_Extensions
     {
 
-        [CustomMethodAttribute]
+        [CustomMethod]
         public static T Who<T>(this IEnumerable<T> items) => throw new NotImplementedException();
 
 

@@ -25,47 +25,48 @@ namespace Vitorm.ElasticSearch
         }
 
 
-        public virtual async Task<RangeData<Entity>> QueryAsync<Entity>(RangedQuery query)
+        public virtual async Task<RangeData<Entity>> QueryAsync<Entity>(RangedQuery query, string indexName = null)
         {
-            var queryBody = new Dictionary<string, object>();
+            var queryPayload = filterRuleBuilder.ConvertToQueryPayload<Entity>(query, maxResultWindowSize: maxResultWindowSize, track_total_hits: track_total_hits);
 
-            #region queryBody
-            {
-                // #1 where
-                queryBody["query"] = filterRuleBuilder.ConvertToQuery(query.filter);
+            indexName ??= GetIndex<Entity>();
 
-                // #2 orders
-                if (query.orders?.Any() == true)
-                {
-                    queryBody["sort"] = query.orders
-                                     .Select(order => new Dictionary<string, object> { [order.field] = new { order = order.asc ? "asc" : "desc" } })
-                                     .ToList();
-                }
-
-                // #3 skip take
-                int skip = 0;
-                if (query.range?.skip > 0)
-                    queryBody["from"] = skip = query.range.skip;
-
-                var take = query.range?.take >= 0 ? query.range.take : maxResultWindowSize;
-                if (take + skip > maxResultWindowSize) take = maxResultWindowSize - skip;
-                queryBody["size"] = take;
-            }
-            #endregion
-
+            var searchResult = await QueryAsync<Entity>(queryPayload, indexName);
 
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
-            var indexName = GetIndex<Entity>();
+            var items = searchResult?.hits?.hits?.Select(hit => hit.GetSource(this, entityDescriptor)).ToList();
 
-            var searchResult = await QueryAsync<Entity>(queryBody, indexName);
-            var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(this, entityDescriptor));
-
-            var items = entities.ToList();
             var totalCount = searchResult?.hits?.total?.value ?? 0;
             return new RangeData<Entity>(query.range) { items = items, totalCount = totalCount };
-
         }
 
+        public virtual IAsyncEnumerable<List<Entity>> BatchQueryAsync<Entity>(
+            RangedQuery query, string indexName = null,
+            int batchSize = 5000, int scrollCacheMinutes = 1, bool useDefaultSort = false
+        ) where Entity : class
+        {
+            int skip = query?.range?.skip ?? 0;
+            int take = batchSize;
+            int maxResultCount = query?.range?.take ?? 0;
+            if (maxResultCount <= 0) maxResultCount = int.MaxValue;
+
+            query ??= new();
+            query.range = new(skip: skip, take: take);
+            var queryPayload = filterRuleBuilder.ConvertToQueryPayload<Entity>(query);
+
+            indexName ??= GetIndex<Entity>();
+
+            var arg = new ScrollQueryArgument
+            {
+                queryPayload = queryPayload,
+                indexName = indexName,
+                scrollCacheMinutes = scrollCacheMinutes,
+                useDefaultSort = useDefaultSort,
+                maxResultCount = maxResultCount
+            };
+
+            return BatchQueryAsync<Entity>(arg);
+        }
 
 
     }
