@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 using Vit.Linq.ComponentModel;
@@ -28,18 +29,44 @@ namespace Vitorm.ElasticSearch
         {
             var queryPayload = filterRuleBuilder.ConvertToQueryPayload<Entity>(query, maxResultWindowSize: maxResultWindowSize, track_total_hits: track_total_hits);
 
-            var entityDescriptor = GetEntityDescriptor(typeof(Entity));
             indexName ??= GetIndex<Entity>();
 
             var searchResult = await QueryAsync<Entity>(queryPayload, indexName);
-            var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(this, entityDescriptor));
 
-            var items = entities.ToList();
+            var entityDescriptor = GetEntityDescriptor(typeof(Entity));
+            var items = searchResult?.hits?.hits?.Select(hit => hit.GetSource(this, entityDescriptor)).ToList();
+
             var totalCount = searchResult?.hits?.total?.value ?? 0;
             return new RangeData<Entity>(query.range) { items = items, totalCount = totalCount };
-
         }
 
+        public virtual IAsyncEnumerable<List<Entity>> BatchQueryAsync<Entity>(
+            RangedQuery query, string indexName = null,
+            int batchSize = 5000, int scrollCacheMinutes = 1, bool useDefaultSort = false
+        ) where Entity : class
+        {
+            int skip = query?.range?.skip ?? 0;
+            int take = batchSize;
+            int maxResultCount = query?.range?.take ?? 0;
+            if (maxResultCount <= 0) maxResultCount = int.MaxValue;
+
+            query ??= new();
+            query.range = new(skip: skip, take: take);
+            var queryPayload = filterRuleBuilder.ConvertToQueryPayload<Entity>(query);
+
+            indexName ??= GetIndex<Entity>();
+
+            var arg = new ScrollQueryArgument
+            {
+                queryPayload = queryPayload,
+                indexName = indexName,
+                scrollCacheMinutes = scrollCacheMinutes,
+                useDefaultSort = useDefaultSort,
+                maxResultCount = maxResultCount
+            };
+
+            return BatchQueryAsync<Entity>(arg);
+        }
 
 
     }

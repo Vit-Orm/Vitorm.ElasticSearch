@@ -3,8 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Reflection;
-using System.Threading.Tasks;
 
 using Vit.Linq;
 using Vit.Linq.ExpressionTree.ComponentModel;
@@ -23,32 +21,21 @@ namespace Vitorm.ElasticSearch
             return Query<Entity>(indexName);
         }
 
-        protected static async Task<List<Result>> ToListAsync<Entity, Result>(DbContext self, Expression expression, object queryPayload, Func<Entity, Result> select, string indexName)
-        {
-            var searchResult = await self.QueryAsync<Entity>(queryPayload, indexName);
 
-            var entityDescriptor = self.GetEntityDescriptor(typeof(Entity));
-            var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(self, entityDescriptor));
 
-            if (select == null)
+
+
+        #region StreamReader
+
+        public static StreamReader defaultStreamReader =
+            ((Func<StreamReader>)(() =>
             {
-                return entities.ToList() as List<Result>;
-            }
-            else
-            {
-                return entities.Select(entity => select(entity)).ToList();
-            }
-        }
+                StreamReader streamReader = new StreamReader();
+                streamReader.methodCallConvertors.Add(Queryable_Extensions_BatchAsync.Convert);
+                return streamReader;
+            }))();
 
-
-        #region Method cache
-        private static MethodInfo MethodInfo_ToListAsync_;
-        static MethodInfo MethodInfo_ToListAsync(Type entityType, Type resultEntityType) =>
-            (MethodInfo_ToListAsync_ ??=
-                 new Func<DbContext, Expression, object, Func<object, string>, string, Task<List<string>>>(ToListAsync)
-                .GetMethodInfo().GetGenericMethodDefinition())
-            .MakeGenericMethod(entityType, resultEntityType);
-
+        public StreamReader streamReader = defaultStreamReader;
         #endregion
 
         public virtual IQueryable<Entity> Query<Entity>(string indexName)
@@ -63,7 +50,7 @@ namespace Vitorm.ElasticSearch
                 //var strNode = Json.Serialize(node);
 
                 // #2 convert to Stream
-                var stream = StreamReader.ReadNode(node);
+                var stream = streamReader.ReadFromNode(node);
                 //var strStream = Json.Serialize(stream);
 
                 // #3.3 Query
@@ -117,6 +104,13 @@ namespace Vitorm.ElasticSearch
                 {
                     var resultEntityType = expression.Type.GetGenericArguments()[0].GetGenericArguments()[0];
                     return MethodInfo_ToListAsync(typeof(Entity), resultEntityType).Invoke(null, new object[] { this, expression, queryPayload, select, indexName });
+                }
+
+                if (combinedStream.method == nameof(Queryable_Extensions_BatchAsync.BatchAsync))
+                {
+                    var resultEntityType = expression.Type.GetGenericArguments()[0].GetGenericArguments()[0];
+                    var arg = new BatchAsyncArgument { dbContext = this, expression = expression, stream = combinedStream, queryPayload = queryPayload, indexName = indexName };
+                    return MethodInfo_BatchAsync(typeof(Entity), resultEntityType).Invoke(null, new object[] { arg, select });
                 }
 
                 var searchResult = Query<Entity>(queryPayload, indexName);

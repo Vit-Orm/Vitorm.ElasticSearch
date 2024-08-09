@@ -239,7 +239,13 @@ namespace Vitorm.ElasticSearch
 
         #region GetNodeField
 
-        public List<string> fieldMethodNames = new() { nameof(NestedField_Extensions.Who), nameof(Object_Extensions_Convert.Convert), nameof(Object_Extensions_Property.Property) };
+        public List<string> fieldMethodNames = new()
+        {
+            nameof(NestedField_Extensions.Who),
+            nameof(Object_Extensions_Convert.Convert),
+            nameof(Object_Extensions_Property.Property),
+        };
+
         public virtual bool NodeIsField(ExpressionNodeConvertArgrument arg, ExpressionNode node)
         {
             if (node.nodeType == NodeType.Member) return true;

@@ -124,6 +124,8 @@ namespace Vitorm.MsTest.QueryBuilder
         }
 
 
+
+
         [TestMethod]
         public async Task Test_IsNull()
         {
@@ -213,8 +215,6 @@ namespace Vitorm.MsTest.QueryBuilder
                 Assert.AreEqual(6, result.items[0].id);
             }
         }
-
-
 
 
 

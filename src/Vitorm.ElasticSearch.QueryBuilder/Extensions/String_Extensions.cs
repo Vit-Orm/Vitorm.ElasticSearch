@@ -10,10 +10,10 @@ namespace Vitorm.ElasticSearch
     public static partial class String_Extensions
     {
 
-        [CustomMethodAttribute]
+        [CustomMethod]
         public static bool Like(this string source, string target) => throw new NotImplementedException();
 
-        [CustomMethodAttribute]
+        [CustomMethod]
         public static bool Match(this string source, string target) => throw new NotImplementedException();
 
         #region ExpressionNode

@@ -7,7 +7,7 @@ namespace Vitorm.ElasticSearch
     public static partial class Object_Extensions_Convert
     {
 
-        [CustomMethodAttribute]
+        [CustomMethod]
         public static T Convert<T>(this object value) => throw new NotImplementedException();
 
 

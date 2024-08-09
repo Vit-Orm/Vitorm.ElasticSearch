@@ -36,36 +36,31 @@ namespace Vitorm.ElasticSearch
             return lambdaExp.Compile();
         }
 
-        protected virtual QueryResponse<Model> Query<Model>(object query, string indexName)
+        protected virtual QueryResponse<Entity> Query<Entity>(object query, string indexName)
         {
-            return QueryAsync<Model>(query, indexName).Result;
-        }
-        public virtual string Query(string query, string indexName)
-        {
-            return QueryAsync(query, indexName).Result;
+            return QueryAsync<Entity>(query, indexName).Result;
         }
 
-
-
-
-        protected virtual async Task<QueryResponse<Model>> QueryAsync<Model>(object query, string indexName)
+        public virtual async Task<Result> InvokeQueryAsync<Result>(object queryPayload, string searchUrl = null, string indexName = null)
         {
-            string strQuery = query == null ? null : (query as string) ?? Serialize(query);
-            var strResponse = await QueryAsync(strQuery, indexName);
-            return Deserialize<QueryResponse<Model>>(strResponse);
-        }
-        public virtual async Task<string> QueryAsync(string query, string indexName)
-        {
-            var searchUrl = $"{readOnlyServerAddress}/{indexName}/_search";
+            if (queryPayload is not string strQuery) strQuery = Serialize(queryPayload);
 
-            using var searchContent = new StringContent(query, Encoding.UTF8, "application/json");
+            searchUrl ??= $"{readOnlyServerAddress}/{indexName}/_search";
+
+            using var searchContent = new StringContent(strQuery, Encoding.UTF8, "application/json");
             using var httpResponse = await httpClient.PostAsync(searchUrl, searchContent);
 
             var strResponse = await httpResponse.Content.ReadAsStringAsync();
             if (!httpResponse.IsSuccessStatusCode) throw new Exception(strResponse);
 
-            return strResponse;
+            return Deserialize<Result>(strResponse);
         }
+
+        public virtual async Task<QueryResponse<Entity>> QueryAsync<Entity>(object queryPayload, string indexName)
+        {
+            return await InvokeQueryAsync<QueryResponse<Entity>>(queryPayload, indexName: indexName);
+        }
+
 
         private static ExpressionNodeBuilder defaultExpressionNodeBuilder_;
         public static ExpressionNodeBuilder defaultExpressionNodeBuilder
@@ -118,6 +113,7 @@ namespace Vitorm.ElasticSearch
 
         public class QueryResponse<T>
         {
+            public string _scroll_id { get; set; }
             public HitsContainer hits { get; set; }
             public class HitsContainer
             {
