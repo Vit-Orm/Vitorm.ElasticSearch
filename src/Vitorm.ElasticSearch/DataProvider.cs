@@ -30,6 +30,7 @@ namespace Vitorm.ElasticSearch
         // #0 Schema :  Create
         public virtual void TryCreateTable<Entity>() => CreateDbContext().TryCreateTable<Entity>();
         public virtual void TryDropTable<Entity>() => CreateDbContext().TryDropTable<Entity>();
+        public virtual void Truncate<Entity>() => CreateDbContext().Truncate<Entity>();
 
 
         // #1 Create :  Add AddRange
