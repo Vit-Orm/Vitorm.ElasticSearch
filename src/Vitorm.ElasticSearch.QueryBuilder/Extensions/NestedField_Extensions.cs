@@ -5,7 +5,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 
-using Vit.Linq.ExpressionTree.ExpressionConvertor.MethodCalls;
+using Vit.Linq.ExpressionNodes.ExpressionConvertor.MethodCalls;
 
 namespace Vitorm.ElasticSearch
 {

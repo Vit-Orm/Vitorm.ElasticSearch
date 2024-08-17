@@ -5,14 +5,14 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
-using Vit.Linq.ExpressionTree.ComponentModel;
+using Vit.Linq.ExpressionNodes.ComponentModel;
 
 using Vitorm.Entity;
 using Vitorm.StreamQuery;
 
 namespace Vitorm.ElasticSearch
 {
-    public partial class DbContext
+    public partial class DbContext : Vitorm.DbContext
     {
         /// <summary>
         /// default is 10000.

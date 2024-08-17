@@ -11,7 +11,7 @@ using Vitorm.Entity;
 
 namespace Vitorm.ElasticSearch
 {
-    public partial class DbContext
+    public partial class DbContext : Vitorm.DbContext
     {
         static void ThrowException(params string[] messages)
         {

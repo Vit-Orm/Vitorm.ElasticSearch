@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 
-using Vit.Linq.ExpressionTree.ComponentModel;
-using Vit.Linq.ExpressionTree.ExpressionConvertor.MethodCalls;
-using Vit.Linq.Filter.ComponentModel;
+using Vit.Linq.ExpressionNodes.ComponentModel;
+using Vit.Linq.ExpressionNodes.ExpressionConvertor.MethodCalls;
+using Vit.Linq.FilterRules.ComponentModel;
 
 namespace Vitorm.ElasticSearch
 {

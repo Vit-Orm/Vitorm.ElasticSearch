@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Vitorm.ElasticSearch
 {
-    public partial class DbContext
+    public partial class DbContext : Vitorm.DbContext
     {
 
         protected static async Task<List<Result>> ToListAsync<Entity, Result>(DbContext self, Expression expression, Dictionary<string, object> queryPayload, Func<Entity, Result> select, string indexName)

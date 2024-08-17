@@ -1,11 +1,12 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 using Vitorm.DataProvider;
 
 namespace Vitorm.ElasticSearch
 {
-    public class DataProvider : IDataProvider
+    public partial class DataProvider : IDataProvider
     {
         Vitorm.DbContext IDataProvider.CreateDbContext() => this.CreateDbContext();
 
