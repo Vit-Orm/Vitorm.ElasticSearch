@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 
+using Vit.Linq.ExpressionNodes;
 using Vit.Linq.ExpressionNodes.ComponentModel;
-using Vit.Linq.ExpressionNodes.ExpressionConvertor.MethodCalls;
 using Vit.Linq.FilterRules.ComponentModel;
 
 namespace Vitorm.ElasticSearch
@@ -10,10 +10,10 @@ namespace Vitorm.ElasticSearch
     public static partial class String_Extensions
     {
 
-        [CustomMethod]
+        [ExpressionNode_CustomMethod]
         public static bool Like(this string source, string target) => throw new NotImplementedException();
 
-        [CustomMethod]
+        [ExpressionNode_CustomMethod]
         public static bool Match(this string source, string target) => throw new NotImplementedException();
 
         #region ExpressionNode

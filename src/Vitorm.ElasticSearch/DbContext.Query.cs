@@ -21,20 +21,8 @@ namespace Vitorm.ElasticSearch
             return Query<Entity>(indexName);
         }
 
-
-
-
-
         #region StreamReader
-
-        public static StreamReader defaultStreamReader =
-            ((Func<StreamReader>)(() =>
-            {
-                StreamReader streamReader = new StreamReader();
-                streamReader.methodCallConvertors.Add(Queryable_Extensions_BatchAsync.Convert);
-                return streamReader;
-            }))();
-
+        public static StreamReader defaultStreamReader = new StreamReader();
         public StreamReader streamReader = defaultStreamReader;
         #endregion
 

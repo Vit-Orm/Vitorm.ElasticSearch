@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 
+using Vit.Linq.ExpressionNodes;
 using Vit.Linq.ExpressionNodes.ComponentModel;
-using Vit.Linq.ExpressionNodes.ExpressionConvertor.MethodCalls;
 
 using Vitorm.StreamQuery;
 using Vitorm.StreamQuery.MethodCall;
@@ -20,7 +20,8 @@ namespace Vitorm.ElasticSearch
         }
 
 
-        [CustomMethod]
+        [ExpressionNode_CustomMethod]
+        [StreamQueryCustomMethod_BatchAsync]
         public static IAsyncEnumerable<List<Result>> BatchAsync<Result>(this IQueryable<Result> source, int batchSize = 5000, int scrollCacheMinutes = 1, bool useDefaultSort = false)
         {
             if (source == null)
@@ -33,17 +34,22 @@ namespace Vitorm.ElasticSearch
                     source.Expression, Expression.Constant(batchSize), Expression.Constant(scrollCacheMinutes), Expression.Constant(useDefaultSort)
                 ));
         }
+    }
 
-
-        #region StreamConvertor
-        public static IStream Convert(MethodCallConvertArgrument methodConvertArg)
+    /// <summary>
+    /// Mark this method to be able to convert to IStream from ExpressionNode when executing query. For example : query.ToListAsync() 
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
+    public class StreamQueryCustomMethod_BatchAsyncAttribute : Attribute, Vitorm.StreamQuery.MethodCall.IMethodConvertor
+    {
+        public IStream Convert(MethodCallConvertArgrument methodConvertArg)
         {
             ExpressionNode_MethodCall call = methodConvertArg.node;
             var reader = methodConvertArg.reader;
             var arg = methodConvertArg.arg;
 
             if (call.arguments?.Length != 4) return null;
-            if (call.methodName != nameof(BatchAsync)) return null;
+            if (call.methodName != nameof(Queryable_Extensions_BatchAsync.BatchAsync)) return null;
 
             if (call.arguments[1].value is not int batchSize) batchSize = 5000;
             if (call.arguments[2].value is not int scrollCacheMinutes) scrollCacheMinutes = 1;
@@ -57,8 +63,6 @@ namespace Vitorm.ElasticSearch
             combinedStream.methodArguments = new object[] { batchSize, scrollCacheMinutes, useDefaultSort };
 
             return combinedStream;
-
         }
-        #endregion
     }
 }

@@ -6,7 +6,7 @@ namespace Vitorm.ElasticSearch
     public partial class DbContext : Vitorm.DbContext
     {
 
-        #region #1.2 Schema :  Truncate
+        // #1.2 Schema :  Truncate
         public override void Truncate<Entity>()
         {
             throw new NotImplementedException();
@@ -15,7 +15,7 @@ namespace Vitorm.ElasticSearch
         {
             throw new NotImplementedException();
         }
-        #endregion
+
 
 
     }
