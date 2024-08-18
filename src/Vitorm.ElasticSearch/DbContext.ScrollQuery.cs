@@ -5,7 +5,6 @@ namespace Vitorm.ElasticSearch
 {
     public partial class DbContext : Vitorm.DbContext
     {
-
         public class ScrollQueryArgument
         {
             public Dictionary<string, object> queryPayload { get; set; }
