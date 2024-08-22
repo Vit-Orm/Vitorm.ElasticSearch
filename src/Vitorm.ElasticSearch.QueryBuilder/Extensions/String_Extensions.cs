@@ -1,19 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
 
-using Vit.Linq.ExpressionTree.ComponentModel;
-using Vit.Linq.ExpressionTree.ExpressionConvertor.MethodCalls;
-using Vit.Linq.Filter.ComponentModel;
+using Vit.Linq.ExpressionNodes;
+using Vit.Linq.ExpressionNodes.ComponentModel;
+using Vit.Linq.FilterRules.ComponentModel;
 
 namespace Vitorm.ElasticSearch
 {
     public static partial class String_Extensions
     {
 
-        [CustomMethod]
+        [ExpressionNode_CustomMethod]
         public static bool Like(this string source, string target) => throw new NotImplementedException();
 
-        [CustomMethod]
+        [ExpressionNode_CustomMethod]
         public static bool Match(this string source, string target) => throw new NotImplementedException();
 
         #region ExpressionNode

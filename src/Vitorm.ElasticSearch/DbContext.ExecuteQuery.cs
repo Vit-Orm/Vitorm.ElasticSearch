@@ -5,14 +5,12 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
-using Vit.Linq.ExpressionTree.ComponentModel;
-
 using Vitorm.Entity;
 using Vitorm.StreamQuery;
 
 namespace Vitorm.ElasticSearch
 {
-    public partial class DbContext
+    public partial class DbContext : Vitorm.DbContext
     {
         /// <summary>
         /// default is 10000.
@@ -25,18 +23,9 @@ namespace Vitorm.ElasticSearch
         public bool track_total_hits = false;
 
 
-        protected virtual Delegate BuildSelect(Type entityType, ExpressionNode selectedFields, string entityParameterName)
-        {
-            // Compile Lambda
 
-            var lambdaNode = ExpressionNode.Lambda(new[] { entityParameterName }, selectedFields);
-            //var strNode = Json.Serialize(lambdaNode);
 
-            var lambdaExp = convertService.ConvertToCode_LambdaExpression(lambdaNode, new[] { entityType });
-            return lambdaExp.Compile();
-        }
-
-        protected virtual QueryResponse<Entity> Query<Entity>(object query, string indexName)
+        public virtual QueryResponse<Entity> Query<Entity>(object query, string indexName)
         {
             return QueryAsync<Entity>(query, indexName).Result;
         }

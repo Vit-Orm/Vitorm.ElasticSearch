@@ -6,7 +6,7 @@ using Vit.Linq.ComponentModel;
 
 namespace Vitorm.ElasticSearch
 {
-    public partial class DbContext
+    public partial class DbContext : Vitorm.DbContext
     {
         private static FilterRuleBuilder defaultFilterRuleBuilder_;
         public static FilterRuleBuilder defaultFilterRuleBuilder

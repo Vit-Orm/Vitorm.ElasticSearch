@@ -1,13 +1,13 @@
 ﻿using System;
 
-using Vit.Linq.ExpressionTree.ExpressionConvertor.MethodCalls;
+using Vit.Linq.ExpressionNodes;
 
 namespace Vitorm.ElasticSearch
 {
     public static partial class Object_Extensions_Property
     {
 
-        [CustomMethod]
+        [ExpressionNode_CustomMethod]
         public static T Property<T>(this object value, string path) => throw new NotImplementedException();
 
     }

@@ -5,7 +5,7 @@ using Vitorm.DataProvider;
 
 namespace Vitorm.ElasticSearch
 {
-    public class DataProvider : IDataProvider
+    public partial class DataProvider : IDataProvider
     {
         Vitorm.DbContext IDataProvider.CreateDbContext() => this.CreateDbContext();
 

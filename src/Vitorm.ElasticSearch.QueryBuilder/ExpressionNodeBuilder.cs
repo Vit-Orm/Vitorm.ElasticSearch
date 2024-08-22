@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 
-using Vit.Linq.ExpressionTree.ComponentModel;
+using Vit.Linq.ExpressionNodes.ComponentModel;
 
-using Convertor = System.Func<Vitorm.ElasticSearch.ExpressionNodeConvertArgrument, Vit.Linq.ExpressionTree.ComponentModel.ExpressionNode, (bool success, object query)>;
+using Convertor = System.Func<Vitorm.ElasticSearch.ExpressionNodeConvertArgrument, Vit.Linq.ExpressionNodes.ComponentModel.ExpressionNode, (bool success, object query)>;
 
 namespace Vitorm.ElasticSearch
 {

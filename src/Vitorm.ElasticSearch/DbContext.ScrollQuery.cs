@@ -3,9 +3,8 @@ using System.Linq;
 
 namespace Vitorm.ElasticSearch
 {
-    public partial class DbContext
+    public partial class DbContext : Vitorm.DbContext
     {
-
         public class ScrollQueryArgument
         {
             public Dictionary<string, object> queryPayload { get; set; }

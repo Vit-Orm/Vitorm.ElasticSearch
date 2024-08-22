@@ -4,9 +4,9 @@ using System.Linq;
 
 using Vit.Linq;
 using Vit.Linq.ComponentModel;
-using Vit.Linq.Filter.ComponentModel;
+using Vit.Linq.FilterRules.ComponentModel;
 
-using Convertor = System.Func<Vitorm.ElasticSearch.FilterRuleConvertArgrument, Vit.Linq.Filter.ComponentModel.IFilterRule, string, object>;
+using Convertor = System.Func<Vitorm.ElasticSearch.FilterRuleConvertArgrument, Vit.Linq.FilterRules.ComponentModel.IFilterRule, string, object>;
 
 namespace Vitorm.ElasticSearch
 {

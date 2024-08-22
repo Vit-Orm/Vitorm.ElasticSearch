@@ -2,7 +2,7 @@
 
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-using Vit.Extensions.Serialize_Extensions;
+using Vitorm.ElasticSearch;
 
 namespace Vitorm.MsTest.CustomTest
 {

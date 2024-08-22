@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace Vitorm.ElasticSearch
 {
-    public partial class DbContext
+    public partial class DbContext : Vitorm.DbContext
     {
 
         #region #1.0 Schema :  GetMapping
@@ -18,7 +18,6 @@ namespace Vitorm.ElasticSearch
             return GetMappingAsync(indexName, throwErrorIfFailed).Result;
         }
         #endregion
-
 
 
         #region #1.1 Schema :  TryCreateTable
@@ -87,7 +86,6 @@ namespace Vitorm.ElasticSearch
         #endregion
 
 
-
         #region #3 Update: Update UpdateRange
         public override int Update<Entity>(Entity entity)
         {
@@ -114,8 +112,7 @@ namespace Vitorm.ElasticSearch
         #endregion
 
 
-
-        #region Save SaveRange
+        #region # Save SaveRange
         public virtual int Save<Entity>(Entity entity)
         {
             var indexName = GetIndex<Entity>();

@@ -14,7 +14,7 @@ using Vit.Extensions.Serialize_Extensions;
 
 namespace Vitorm.ElasticSearch
 {
-    public partial class DbContext
+    public partial class DbContext : Vitorm.DbContext
     {
 
 
@@ -39,7 +39,7 @@ namespace Vitorm.ElasticSearch
 
         #region #1.1 Schema :  TryCreateTable
 
-        public virtual async Task TryCreateTableAsync<Entity>()
+        public override async Task TryCreateTableAsync<Entity>()
         {
             var indexName = GetIndex<Entity>();
             await TryCreateTableAsync<Entity>(indexName);
@@ -140,7 +140,7 @@ namespace Vitorm.ElasticSearch
         #endregion
 
         #region #1.2 Schema :  TryDropTable
-        public virtual async Task TryDropTableAsync<Entity>()
+        public override async Task TryDropTableAsync<Entity>()
         {
             var indexName = GetIndex<Entity>();
             await TryDropTableAsync(indexName);
@@ -163,7 +163,7 @@ namespace Vitorm.ElasticSearch
 
         #region #1.1 Create :  Add
 
-        public virtual async Task<Entity> AddAsync<Entity>(Entity entity)
+        public override async Task<Entity> AddAsync<Entity>(Entity entity)
         {
             var indexName = GetIndex<Entity>();
             return await AddAsync(entity, indexName);
@@ -188,7 +188,7 @@ namespace Vitorm.ElasticSearch
 
 
         #region #1.2 Create :  AddRange
-        public virtual async Task AddRangeAsync<Entity>(IEnumerable<Entity> entities)
+        public override async Task AddRangeAsync<Entity>(IEnumerable<Entity> entities)
         {
             var indexName = GetIndex<Entity>();
             await AddRangeAsync(entities, indexName);
@@ -222,7 +222,7 @@ namespace Vitorm.ElasticSearch
 
         #region #2.1 Retrieve : Get
 
-        public virtual async Task<Entity> GetAsync<Entity>(object keyValue)
+        public override async Task<Entity> GetAsync<Entity>(object keyValue)
         {
             var indexName = GetIndex<Entity>();
             return await GetAsync<Entity>(keyValue, indexName);
@@ -276,7 +276,7 @@ namespace Vitorm.ElasticSearch
 
 
         #region #3 Update: Update UpdateRange
-        public virtual async Task<int> UpdateAsync<Entity>(Entity entity)
+        public override async Task<int> UpdateAsync<Entity>(Entity entity)
         {
             return await UpdateRangeAsync<Entity>(new[] { entity });
         }
@@ -287,7 +287,7 @@ namespace Vitorm.ElasticSearch
         }
 
 
-        public virtual async Task<int> UpdateRangeAsync<Entity>(IEnumerable<Entity> entities)
+        public override async Task<int> UpdateRangeAsync<Entity>(IEnumerable<Entity> entities)
         {
             var indexName = GetIndex<Entity>();
             return await UpdateRangeAsync<Entity>(entities, indexName);
@@ -360,7 +360,7 @@ namespace Vitorm.ElasticSearch
 
         #region #5 Delete : Delete DeleteRange DeleteByKey DeleteByKeys
 
-        public virtual async Task<int> DeleteAsync<Entity>(Entity entity)
+        public override async Task<int> DeleteAsync<Entity>(Entity entity)
         {
             var indexName = GetIndex<Entity>();
             return await DeleteAsync<Entity>(entity, indexName);
@@ -375,7 +375,7 @@ namespace Vitorm.ElasticSearch
 
 
 
-        public virtual async Task<int> DeleteRangeAsync<Entity>(IEnumerable<Entity> entities)
+        public override async Task<int> DeleteRangeAsync<Entity>(IEnumerable<Entity> entities)
         {
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
 
@@ -391,7 +391,7 @@ namespace Vitorm.ElasticSearch
         }
 
 
-        public virtual async Task<int> DeleteByKeyAsync<Entity>(object keyValue)
+        public override async Task<int> DeleteByKeyAsync<Entity>(object keyValue)
         {
             var indexName = GetIndex<Entity>();
             return await DeleteByKeyAsync(keyValue, indexName);
@@ -428,7 +428,7 @@ namespace Vitorm.ElasticSearch
 
 
 
-        public virtual async Task<int> DeleteByKeysAsync<Entity, Key>(IEnumerable<Key> keys)
+        public override async Task<int> DeleteByKeysAsync<Entity, Key>(IEnumerable<Key> keys)
         {
             var indexName = GetIndex<Entity>();
             return await DeleteByKeysAsync<Entity, Key>(keys, indexName);
