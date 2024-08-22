@@ -85,6 +85,21 @@ namespace Vitorm.ElasticSearch
         // GetDocumentId
         public Func<IEntityDescriptor, object, string> GetDocumentId = (entityDescriptor, entity) => entityDescriptor?.key?.GetValue(entity)?.ToString();
 
+
+        public static string GetEntityId(IEntityDescriptor entityDescriptor, object entity)
+        {
+            var key = entityDescriptor?.key;
+            object keyValue = null;
+            if (entity is not null && key is not null)
+            {
+                keyValue = key.GetValue(entity);
+
+                if (keyValue is null || keyValue.Equals(TypeUtil.DefaultValue(key.type)))
+                    return null;
+            }
+            return keyValue?.ToString();
+        }
+
         // Serialize
         public virtual string Serialize<Model>(Model m)
         {
