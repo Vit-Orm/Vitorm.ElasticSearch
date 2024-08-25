@@ -27,14 +27,14 @@ namespace Vitorm.MsTest.CommonTest
             DataSource.WaitForUpdate();
 
             // #2 Assert
-            //{
-            //    var user = dbSet.Query().Where(m => m.enable == true).OrderBy(m => m.id).First();
-            //    Assert.AreEqual(1, user.id);
-            //}
-            //{
-            //    var user = dbSet.Query().Where(m => m.enable == false).OrderBy(m => m.id).First();
-            //    Assert.AreEqual(3, user.id);
-            //}
+            {
+                var user = dbSet.Query().Where(m => m.enable == true).OrderBy(m => m.id).First();
+                Assert.AreEqual(1, user.id);
+            }
+            {
+                var user = dbSet.Query().Where(m => m.enable == false).OrderBy(m => m.id).First();
+                Assert.AreEqual(3, user.id);
+            }
             {
                 var user = dbSet.Query().Where(m => m.enable).OrderBy(m => m.id).First();
                 Assert.AreEqual(1, user.id);
