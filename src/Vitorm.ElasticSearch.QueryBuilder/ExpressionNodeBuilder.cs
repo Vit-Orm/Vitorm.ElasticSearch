@@ -48,21 +48,43 @@ namespace Vitorm.ElasticSearch
         public Dictionary<string, string> conditionTypeMap
           = new Dictionary<string, string> { [NodeType.AndAlso] = "filter", [NodeType.OrElse] = "should", [NodeType.Not] = "must_not" };
 
-        protected virtual object ConvertExpressionNodeToQuery(ExpressionNodeConvertArgrument arg, ExpressionNode data)
+        protected virtual object ConvertExpressionNodeToQuery(ExpressionNodeConvertArgrument arg, ExpressionNode node)
         {
-            switch (data.nodeType)
+            switch (node.nodeType)
             {
+                case NodeType.Member:
+                    {
+                        var field = GetNodeField(arg, node, out var fieldType);
+                        if (fieldType == typeof(bool) || fieldType == typeof(bool?))
+                        {
+                            // {"term":{"hasFather": true } }
+                            return new { term = new Dictionary<string, object> { [field] = true } };
+                        }
+                        break;
+                    }
                 case NodeType.AndAlso:
                 case NodeType.OrElse:
                     {
-                        ExpressionNode_Binary binary = data;
-                        var conditionType = conditionTypeMap[data.nodeType];
+                        ExpressionNode_Binary binary = node;
+                        var conditionType = conditionTypeMap[node.nodeType];
                         var condition = new[] { ConvertExpressionNodeToQuery(arg, binary.left), ConvertExpressionNodeToQuery(arg, binary.right) };
                         return new { @bool = new Dictionary<string, object> { [conditionType] = condition } };
                     }
                 case NodeType.Not:
                     {
-                        ExpressionNode_Not notNode = data;
+                        ExpressionNode_Not notNode = node;
+
+                        // !bool?.Value
+                        if (notNode.body?.nodeType == NodeType.Member)
+                        {
+                            var field = GetNodeField(arg, notNode.body, out var fieldType);
+                            if (fieldType == typeof(bool) || fieldType == typeof(bool?))
+                            {
+                                // {"term":{"hasFather": false } }
+                                return new { term = new Dictionary<string, object> { [field] = false } };
+                            }
+                        }
+
                         var conditionType = conditionTypeMap[NodeType.Not];
                         var condition = new[] { ConvertExpressionNodeToQuery(arg, notNode.body) };
                         // {"bool":{"must_not":{"exists":{"field":"address"}}}}
@@ -71,7 +93,7 @@ namespace Vitorm.ElasticSearch
                 case NodeType.NotEqual:
                 case NodeType.Equal:
                     {
-                        ExpressionNode_Binary binary = data;
+                        ExpressionNode_Binary binary = node;
                         ExpressionNode memberNode;
                         ExpressionNode valueNode;
                         string operation = binary.nodeType;
@@ -90,7 +112,7 @@ namespace Vitorm.ElasticSearch
 
                         if (value == null)
                         {
-                            if (data.nodeType == NodeType.NotEqual)
+                            if (node.nodeType == NodeType.NotEqual)
                             {
                                 // {"exists":{"field":"address"}}
                                 return new { exists = new { field = field } };
@@ -114,7 +136,7 @@ namespace Vitorm.ElasticSearch
                             condition = new { term = new Dictionary<string, object> { [field] = value } };
                         }
 
-                        if (data.nodeType == NodeType.NotEqual)
+                        if (node.nodeType == NodeType.NotEqual)
                         {
                             var conditionType = conditionTypeMap[NodeType.Not];
                             condition = new { @bool = new Dictionary<string, object> { [conditionType] = condition } };
@@ -126,7 +148,7 @@ namespace Vitorm.ElasticSearch
                 case NodeType.GreaterThan:
                 case NodeType.GreaterThanOrEqual:
                     {
-                        ExpressionNode_Binary binary = data;
+                        ExpressionNode_Binary binary = node;
                         ExpressionNode memberNode;
                         ExpressionNode valueNode;
                         string operation = binary.nodeType;
@@ -166,7 +188,7 @@ namespace Vitorm.ElasticSearch
                     }
                 case NodeType.MethodCall:
                     {
-                        ExpressionNode_MethodCall methodCall = data;
+                        ExpressionNode_MethodCall methodCall = node;
                         switch (methodCall.methodName)
                         {
                             #region ##1 String method:  StartsWith EndsWith Contains
@@ -222,11 +244,11 @@ namespace Vitorm.ElasticSearch
 
             foreach (var convertor in convertors)
             {
-                var result = convertor.convert(arg, data);
+                var result = convertor.convert(arg, node);
                 if (result.success) return result.query;
             }
 
-            throw new NotSupportedException("not supported nodeType: " + data.nodeType);
+            throw new NotSupportedException("not supported nodeType: " + node.nodeType);
         }
 
         static object GetCondition_StringLike(string field, object value)
@@ -254,63 +276,79 @@ namespace Vitorm.ElasticSearch
             return false;
         }
 
-        public virtual string GetNodeField(ExpressionNodeConvertArgrument arg, ExpressionNode data) => GetNodeField(arg, data, out _);
-        public virtual string GetNodeField(ExpressionNode data, out Type type) => GetNodeField(new() { builder = this }, data, out type);
-        public virtual string GetNodeField(ExpressionNodeConvertArgrument arg, ExpressionNode data, out Type type)
+        public virtual string GetNodeField(ExpressionNodeConvertArgrument arg, ExpressionNode node) => GetNodeField(arg, node, out _);
+        public virtual string GetNodeField(ExpressionNode node, out Type type) => GetNodeField(new() { builder = this }, node, out type);
+
+        protected static bool IsNullable(Type type)
         {
-            if (data?.nodeType == NodeType.MethodCall)
+            return type?.IsGenericType == true && typeof(Nullable<>) == type.GetGenericTypeDefinition();
+        }
+        public virtual string GetNodeField(ExpressionNodeConvertArgrument arg, ExpressionNode node, out Type type)
+        {
+            // bool?.Value
+            if (node?.nodeType == NodeType.Member && node.objectValue != null && node.memberName == nameof(Nullable<bool>.Value))
             {
-                ExpressionNode_MethodCall methodCall = data;
+                var memberType = node.objectValue.Member_GetType();
+                if (IsNullable(memberType))
+                {
+                    return GetNodeField(arg, node.objectValue, out type);
+                }
+            }
+
+
+            if (node?.nodeType == NodeType.MethodCall)
+            {
+                ExpressionNode_MethodCall methodCall = node;
                 type = methodCall.MethodCall_GetReturnType();
                 switch (methodCall.methodName)
                 {
                     case nameof(NestedField_Extensions.Who):
                         {
                             //  NestedField
-                            ExpressionNode node = methodCall.arguments[0];
-                            return GetNodeField(arg, node);
+                            ExpressionNode child = methodCall.arguments[0];
+                            return GetNodeField(arg, child);
                         }
                     case nameof(Object_Extensions_Convert.Convert):
                         {
-                            ExpressionNode node = methodCall.arguments[0];
-                            return GetNodeField(arg, node);
+                            ExpressionNode child = methodCall.arguments[0];
+                            return GetNodeField(arg, child);
                         }
                     case nameof(Object_Extensions_Property.Property):
                         {
-                            ExpressionNode node = methodCall.arguments[0];
+                            ExpressionNode child = methodCall.arguments[0];
                             ExpressionNode_Constant path = methodCall.arguments[1];
                             var propertyPath = path.value as string;
-                            var field = GetNodeField(arg, node);
+                            var field = GetNodeField(arg, child);
                             if (string.IsNullOrEmpty(field)) return propertyPath;
                             return $"{field}.{propertyPath}";
                         }
                 }
-                throw new NotSupportedException("not supported field expression , Node Type: " + data.nodeType);
+                throw new NotSupportedException("not supported field expression , Node Type: " + node.nodeType);
             }
 
-            if (data?.nodeType != NodeType.Member) throw new NotSupportedException("not supported field expression , Node Type: " + data.nodeType);
+            if (node?.nodeType != NodeType.Member) throw new NotSupportedException("not supported field expression , Node Type: " + node.nodeType);
 
-            type = data.Member_GetType();
+            type = node.Member_GetType();
 
             string parent = null;
             Type parentType = null;
-            if (data.objectValue != null)
+            if (node.objectValue != null)
             {
-                if (data.objectValue?.nodeType == NodeType.Member)
+                if (node.objectValue?.nodeType == NodeType.Member)
                 {
-                    parent = GetNodeField(arg, data.objectValue);
-                    parentType = data.objectValue.Member_GetType();
+                    parent = GetNodeField(arg, node.objectValue);
+                    parentType = node.objectValue.Member_GetType();
                 }
-                else if (data.objectValue?.nodeType == NodeType.MethodCall)
+                else if (node.objectValue?.nodeType == NodeType.MethodCall)
                 {
-                    parent = GetNodeField(arg, data.objectValue);
-                    parentType = data.objectValue.MethodCall_GetReturnType();
+                    parent = GetNodeField(arg, node.objectValue);
+                    parentType = node.objectValue.MethodCall_GetReturnType();
                 }
                 else
-                    throw new NotSupportedException("not supported field expression , Node Type: " + data.nodeType);
+                    throw new NotSupportedException("not supported field expression , Node Type: " + node.nodeType);
             }
 
-            var memberName = data?.memberName;
+            var memberName = node?.memberName;
             #region Get column defination
             if (memberName != null && parentType != null)
             {
