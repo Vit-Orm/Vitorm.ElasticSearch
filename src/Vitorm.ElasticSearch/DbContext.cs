@@ -24,11 +24,11 @@ namespace Vitorm.ElasticSearch
         /// <summary>
         /// es address, example:"http://localhost:9200"
         /// </summary>
-        public string readOnlyServerAddress => _readOnlyServerAddress ?? serverAddress;
+        public string readOnlyServerAddress { get => _readOnlyServerAddress ?? serverAddress; set => _readOnlyServerAddress = value; }
 
 
-        protected System.Net.Http.HttpClient httpClient = null;
-        protected static System.Net.Http.HttpClient defaultHttpClient = null;
+        public System.Net.Http.HttpClient httpClient = null;
+        public static System.Net.Http.HttpClient defaultHttpClient = null;
 
         public DbContext(string serverAddress, System.Net.Http.HttpClient httpClient = null, int? commandTimeout = null)
             : this(new DbConfig(connectionString: serverAddress, commandTimeout: commandTimeout), httpClient)
@@ -42,9 +42,9 @@ namespace Vitorm.ElasticSearch
 
             if (httpClient == null)
             {
-                defaultHttpClient ??= CreatHttpClient();
+                defaultHttpClient ??= CreateHttpClient();
                 if (dbConfig.commandTimeout.HasValue && dbConfig.commandTimeout.Value != (int)defaultHttpClient.Timeout.TotalSeconds)
-                    httpClient = CreatHttpClient(dbConfig.commandTimeout.Value);
+                    httpClient = CreateHttpClient(dbConfig.commandTimeout.Value);
                 else
                     httpClient = defaultHttpClient;
             }
@@ -55,7 +55,7 @@ namespace Vitorm.ElasticSearch
             dbGroupName = "ES_DbSet_" + GetHashCode();
         }
 
-        HttpClient CreatHttpClient(int? commandTimeout = null)
+        HttpClient CreateHttpClient(int? commandTimeout = null)
         {
             // trust all certificate
             var HttpHandler = new HttpClientHandler

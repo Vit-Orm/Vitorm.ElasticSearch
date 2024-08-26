@@ -4,6 +4,8 @@ using System.Threading.Tasks;
 
 using Vit.Linq.ComponentModel;
 
+using Vitorm.ElasticSearch.QueryBuilder;
+
 namespace Vitorm.ElasticSearch
 {
     public partial class DbContext : Vitorm.DbContext

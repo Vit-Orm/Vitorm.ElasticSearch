@@ -5,6 +5,8 @@ using Vit.Linq.ExpressionNodes;
 using Vit.Linq.ExpressionNodes.ComponentModel;
 using Vit.Linq.FilterRules.ComponentModel;
 
+using Vitorm.ElasticSearch.QueryBuilder;
+
 namespace Vitorm.ElasticSearch
 {
     public static partial class String_Extensions
@@ -17,7 +19,7 @@ namespace Vitorm.ElasticSearch
         public static bool Match(this string source, string target) => throw new NotImplementedException();
 
         #region ExpressionNode
-        public static (bool success, object query) Like_ConvertToQuery(ExpressionNodeConvertArgrument arg, ExpressionNode data)
+        public static (bool success, object query) Like_ConvertToQuery(ExpressionNodeConvertArgument arg, ExpressionNode data)
         {
             if (data.nodeType == NodeType.MethodCall && data.methodName == nameof(String_Extensions.Like))
             {
@@ -35,7 +37,7 @@ namespace Vitorm.ElasticSearch
             return default;
         }
 
-        public static (bool success, object query) Match_ConvertToQuery(ExpressionNodeConvertArgrument arg, ExpressionNode data)
+        public static (bool success, object query) Match_ConvertToQuery(ExpressionNodeConvertArgument arg, ExpressionNode data)
         {
             if (data.nodeType == NodeType.MethodCall && data.methodName == nameof(String_Extensions.Match))
             {
@@ -57,7 +59,7 @@ namespace Vitorm.ElasticSearch
 
 
         #region FilterRule
-        public static object Like_ConvertToQuery(FilterRuleConvertArgrument arg, IFilterRule filter, string Operator)
+        public static object Like_ConvertToQuery(FilterRuleConvertArgument arg, IFilterRule filter, string Operator)
         {
             var field = arg.builder.GetField(arg, filter);
             var value = arg.builder.GetValue(arg, filter);
@@ -65,7 +67,7 @@ namespace Vitorm.ElasticSearch
             // { "wildcard": { "name.keyword": "*lith*" } }
             return new { wildcard = new Dictionary<string, object> { [field + ".keyword"] = value } };
         }
-        public static object Match_ConvertToQuery(FilterRuleConvertArgrument arg, IFilterRule filter, string Operator)
+        public static object Match_ConvertToQuery(FilterRuleConvertArgument arg, IFilterRule filter, string Operator)
         {
             var field = arg.builder.GetField(arg, filter);
             var value = arg.builder.GetValue(arg, filter);

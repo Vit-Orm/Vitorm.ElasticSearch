@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
+using Vitorm.ElasticSearch.QueryBuilder;
 using Vitorm.Entity;
 using Vitorm.StreamQuery;
 
