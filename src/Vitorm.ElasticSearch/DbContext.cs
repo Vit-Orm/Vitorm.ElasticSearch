@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Net.Http;
 
+using Newtonsoft.Json;
+
 using Vit.Core.Module.Serialization;
 
 using Vitorm.Entity;
@@ -103,8 +105,10 @@ namespace Vitorm.ElasticSearch
         // Serialize
         public virtual string Serialize<Model>(Model m)
         {
-            return Json.Serialize(m);
+            return JsonConvert.SerializeObject(m, serializeSetting);
         }
+        public static readonly JsonSerializerSettings defaultSerializeSetting = new() { NullValueHandling = NullValueHandling.Include, DateFormatHandling = DateFormatHandling.IsoDateFormat, DateFormatString = "yyyy-MM-dd HH:mm:ss" };
+        public JsonSerializerSettings serializeSetting { get; set; } = defaultSerializeSetting;
         public virtual Model Deserialize<Model>(string jsonString)
         {
             return Json.Deserialize<Model>(jsonString);

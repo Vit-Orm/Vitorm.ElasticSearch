@@ -35,10 +35,9 @@ namespace Vitorm.ElasticSearch
 
             var searchResult = await QueryAsync<Entity>(queryPayload, indexName);
 
-            var entityDescriptor = GetEntityDescriptor(typeof(Entity));
-            var items = searchResult?.hits?.hits?.Select(hit => hit.GetSource(this, entityDescriptor)).ToList();
+            var items = searchResult.entities?.ToList();
 
-            var totalCount = searchResult?.hits?.total?.value ?? 0;
+            var totalCount = searchResult.totalCount ?? 0;
             return new RangeData<Entity>(query.range) { items = items, totalCount = totalCount };
         }
 

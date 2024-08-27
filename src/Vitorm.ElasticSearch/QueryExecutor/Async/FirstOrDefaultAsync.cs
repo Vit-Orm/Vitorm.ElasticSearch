@@ -25,47 +25,38 @@ namespace Vitorm.ElasticSearch.QueryExecutor
 
         public static async Task<Result> Execute<Entity, Result>(QueryExecutorArgument execArg)
         {
-            CombinedStream combinedStream = execArg.combinedStream;
+            var combinedStream = execArg.combinedStream;
             var dbContext = execArg.dbContext;
 
-            // #1 queryPayload
-            var queryPayload = dbContext.ConvertStreamToQueryPayload(combinedStream);
+            var searchArg = new SearchExecutorArgument<Result> { combinedStream = execArg.combinedStream, dbContext = execArg.dbContext, indexName = execArg.indexName };
+            searchArg.needList = true;
+            searchArg.needTotalCount = false;
 
-            // #2 query in server
-            var searchResult = await dbContext.QueryAsync<Entity>(queryPayload, execArg.indexName);
-            var entityDescriptor = dbContext.GetEntityDescriptor(typeof(Entity));
-            var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(dbContext, entityDescriptor));
+            await dbContext.ExecuteSearchAsync<Entity, Result>(searchArg);
 
-            // #3 funcSelect
-            Func<Entity, Result> funcSelect = DbContext.BuildSelect<Entity, Result>(combinedStream, dbContext.convertService);
-
-
-            // #4 result
-            Entity entity;
+            // result 
             var method = combinedStream.method;
             if (method.EndsWith("Async")) method = method.Substring(0, method.Length - "Async".Length);
             switch (method)
             {
                 case nameof(Queryable.FirstOrDefault):
                     {
-                        entity = entities.FirstOrDefault(); break;
+                        return searchArg.list.FirstOrDefault();
                     }
                 case nameof(Queryable.First):
                     {
-                        entity = entities.First(); break;
+                        return searchArg.list.First();
                     }
                 case nameof(Queryable.LastOrDefault):
                     {
-                        entity = entities.LastOrDefault(); break;
+                        return searchArg.list.LastOrDefault();
                     }
                 case nameof(Queryable.Last):
                     {
-                        entity = entities.Last(); break;
+                        return searchArg.list.Last();
                     }
                 default: throw new NotSupportedException("not supported query type: " + combinedStream.method);
-
             }
-            return funcSelect == null ? ((Result)(object)entity) : funcSelect(entity);
         }
 
 

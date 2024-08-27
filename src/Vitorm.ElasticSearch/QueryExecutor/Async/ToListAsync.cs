@@ -28,30 +28,19 @@ namespace Vitorm.ElasticSearch.QueryExecutor
 
         public static async Task<List<Result>> Execute<Entity, Result>(QueryExecutorArgument execArg)
         {
-            CombinedStream combinedStream = execArg.combinedStream;
+            var combinedStream = execArg.combinedStream;
             var dbContext = execArg.dbContext;
 
-            // #1 queryPayload
-            var queryPayload = dbContext.ConvertStreamToQueryPayload(combinedStream);
+            var searchArg = new SearchExecutorArgument<Result> { combinedStream = execArg.combinedStream, dbContext = execArg.dbContext, indexName = execArg.indexName };
+            searchArg.needList = true;
+            searchArg.needTotalCount = false;
 
-            // #2 query in server
-            var searchResult = await dbContext.QueryAsync<Entity>(queryPayload, execArg.indexName);
-            var entityDescriptor = dbContext.GetEntityDescriptor(typeof(Entity));
-            var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(dbContext, entityDescriptor));
+            await dbContext.ExecuteSearchAsync<Entity, Result>(searchArg);
 
-            // #3 funcSelect
-            Func<Entity, Result> funcSelect = DbContext.BuildSelect<Entity, Result>(combinedStream, dbContext.convertService);
-
-            // #4 result
-            if (funcSelect == null)
-            {
-                return entities.ToList() as List<Result>;
-            }
-            else
-            {
-                return entities.Select(entity => funcSelect(entity)).ToList();
-            }
+            return searchArg.list.ToList();
         }
+
+
 
 
         private static MethodInfo Execute_MethodInfo_;

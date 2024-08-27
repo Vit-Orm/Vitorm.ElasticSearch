@@ -25,15 +25,18 @@ namespace Vitorm.ElasticSearch.QueryExecutor
             CombinedStream combinedStream = execArg.combinedStream;
             var dbContext = execArg.dbContext;
 
-            // #1 queryPayload
+            var searchArg = new SearchExecutorArgument<object> { combinedStream = execArg.combinedStream, dbContext = dbContext, indexName = execArg.indexName };
+            searchArg.needList = false;
+            searchArg.needTotalCount = true;
+
+
             var queryArg = (combinedStream.orders, combinedStream.skip, combinedStream.take, combinedStream.method);
             (combinedStream.orders, combinedStream.skip, combinedStream.take, combinedStream.method) = (null, null, 0, nameof(Queryable.Count));
-            var queryPayload = dbContext.ConvertStreamToQueryPayload(combinedStream);
 
-            // #2 query in server
-            var count = (await dbContext.QueryAsync<Entity>(queryPayload, execArg.indexName))?.hits?.total?.value ?? 0;
+            await dbContext.ExecuteSearchAsync<Entity, object>(searchArg);
+            var count = searchArg.totalCount ?? 0;
 
-            // #3 result
+            // result
             if (count > 0 && queryArg.method.StartsWith(nameof(Queryable.Count)))
             {
                 if (queryArg.skip > 0) count = Math.Max(count - queryArg.skip.Value, 0);

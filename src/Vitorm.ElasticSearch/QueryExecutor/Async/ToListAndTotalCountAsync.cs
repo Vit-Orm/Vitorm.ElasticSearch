@@ -27,33 +27,18 @@ namespace Vitorm.ElasticSearch.QueryExecutor
 
         public static async Task<(List<Result> list, int totalCount)> Execute<Entity, Result>(QueryExecutorArgument execArg)
         {
-            CombinedStream combinedStream = execArg.combinedStream;
+            var combinedStream = execArg.combinedStream;
             var dbContext = execArg.dbContext;
 
-            // #1 queryPayload
-            var queryPayload = dbContext.ConvertStreamToQueryPayload(combinedStream);
-
-            // #2 query in server
-            var searchResult = await dbContext.QueryAsync<Entity>(queryPayload, execArg.indexName);
-            var entityDescriptor = dbContext.GetEntityDescriptor(typeof(Entity));
-            var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(dbContext, entityDescriptor));
+            var searchArg = new SearchExecutorArgument<Result> { combinedStream = execArg.combinedStream, dbContext = dbContext, indexName = execArg.indexName };
+            searchArg.needList = true;
+            searchArg.needTotalCount = true;
 
 
-            // #3 funcSelect
-            Func<Entity, Result> funcSelect = DbContext.BuildSelect<Entity, Result>(combinedStream, dbContext.convertService);
+            await dbContext.ExecuteSearchAsync<Entity, Result>(searchArg);
 
-            // #4 result
-            List<Result> list; int totalCount;
-            if (funcSelect == null)
-            {
-                list = entities.ToList() as List<Result>;
-            }
-            else
-            {
-                list = entities.Select(entity => funcSelect(entity)).ToList();
-            }
-            // TotalCount
-            totalCount = searchResult?.hits?.total?.value ?? 0;
+            List<Result> list = searchArg.list.ToList();
+            int totalCount = searchArg.totalCount ?? 0;
 
             return (list, totalCount);
         }

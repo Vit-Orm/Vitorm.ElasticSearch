@@ -144,20 +144,13 @@ namespace Vitorm.ElasticSearch.QueryBuilder
             return filter.condition;
         }
         public virtual string GetField(FilterRuleConvertArgument arg, IFilterRule filter) => filter?.field;
-        public virtual Type GetFieldType(FilterRuleConvertArgument arg, string field)
-        {
-            if (!string.IsNullOrWhiteSpace(field) && arg.entityType != null)
-            {
-                return LinqHelp.GetNestedMemberType(arg.entityType, field);
-            }
-            return null;
-        }
         public virtual string GetField(FilterRuleConvertArgument arg, IFilterRule filter, out Type fieldType)
         {
             var field = GetField(arg, filter);
             fieldType = GetFieldType(arg, field);
             return field;
         }
+        public virtual Type GetFieldType(FilterRuleConvertArgument arg, string field) => LinqHelp.GetNestedMemberType(arg.entityType, field);
 
         public virtual object GetValue(FilterRuleConvertArgument arg, IFilterRule filter) => filter?.value;
 

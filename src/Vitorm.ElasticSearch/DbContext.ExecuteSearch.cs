@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
 
 using Vitorm.ElasticSearch.QueryBuilder;
+using Vitorm.ElasticSearch.QueryExecutor;
+using Vitorm.ElasticSearch.SearchExecutor;
 using Vitorm.Entity;
 using Vitorm.StreamQuery;
 
@@ -24,32 +24,36 @@ namespace Vitorm.ElasticSearch
         public bool track_total_hits = false;
 
 
+        #region SearchExecutor
+        public static List<ISearchExecutor> defaultSearchExecutor = new() { new PlainSearchExecutor() };
+        public List<ISearchExecutor> searchExecutor = defaultSearchExecutor;
+        #endregion
 
 
-        public virtual QueryResponse<Entity> Query<Entity>(object query, string indexName)
+        public virtual async Task<bool> ExecuteSearchAsync<Entity, ResultEntity>(SearchExecutorArgument<ResultEntity> arg)
         {
-            return QueryAsync<Entity>(query, indexName).Result;
+            foreach (var executor in searchExecutor)
+            {
+                var success = await executor.ExecuteSearchAsync<Entity, ResultEntity>(arg);
+                if (success) return true;
+            }
+            throw new NotSupportedException("not supported Search");
         }
 
-        public virtual async Task<Result> InvokeQueryAsync<Result>(object queryPayload, string searchUrl = null, string indexName = null)
+
+
+
+        public virtual async Task<(IEnumerable<Entity> entities, int? totalCount)> QueryAsync<Entity>(object queryPayload, string indexName)
         {
-            if (queryPayload is not string strQuery) strQuery = Serialize(queryPayload);
+            var searchResult = await ExecuteSearchAsync<QueryResponse<Entity>>(queryPayload, indexName: indexName);
 
-            searchUrl ??= $"{readOnlyServerAddress}/{indexName}/_search";
-
-            using var searchContent = new StringContent(strQuery, Encoding.UTF8, "application/json");
-            using var httpResponse = await httpClient.PostAsync(searchUrl, searchContent);
-
-            var strResponse = await httpResponse.Content.ReadAsStringAsync();
-            if (!httpResponse.IsSuccessStatusCode) throw new Exception(strResponse);
-
-            return Deserialize<Result>(strResponse);
+            var entityDescriptor = GetEntityDescriptor(typeof(Entity));
+            var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(this, entityDescriptor));
+            var totalCount = searchResult?.hits?.total?.value;
+            return (entities, totalCount);
         }
 
-        public virtual async Task<QueryResponse<Entity>> QueryAsync<Entity>(object queryPayload, string indexName)
-        {
-            return await InvokeQueryAsync<QueryResponse<Entity>>(queryPayload, indexName: indexName);
-        }
+
 
 
         private static ExpressionNodeBuilder defaultExpressionNodeBuilder_;

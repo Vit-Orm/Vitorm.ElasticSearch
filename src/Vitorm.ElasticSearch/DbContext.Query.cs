@@ -132,8 +132,8 @@ namespace Vitorm.ElasticSearch
 
                 // #4 validate
                 if (stream is StreamToUpdate) throw new NotSupportedException($"not supported {nameof(Orm_Extensions.ExecuteUpdate)}");
-                SourceStream source = combinedStream.source as SourceStream ?? throw new NotSupportedException("not supported nested query");
-                if (combinedStream.isGroupedStream) throw new NotSupportedException("not supported group query");
+                if (combinedStream.source is not SourceStream) throw new NotSupportedException("not supported nested query");
+                //if (combinedStream.isGroupedStream) throw new NotSupportedException("not supported group query");
                 if (combinedStream.joins?.Any() == true) throw new NotSupportedException("not supported join query");
                 if (combinedStream.distinct != null) throw new NotSupportedException("not supported distinct query");
 

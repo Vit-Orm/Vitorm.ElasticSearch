@@ -34,8 +34,8 @@ namespace Vitorm.ElasticSearch
         }
 
 
-        #region SingleActionAsync
-        protected virtual async Task<Entity> SingleActionAsync<Entity>(IEntityDescriptor entityDescriptor, Entity entity, string indexName, string action, HttpMethod httpMethod = null)
+        #region ExecuteActionAsync
+        protected virtual async Task<Entity> ExecuteActionAsync<Entity>(IEntityDescriptor entityDescriptor, Entity entity, string indexName, string action, HttpMethod httpMethod = null)
         {
             var _id = GetDocumentId(entityDescriptor, entity);
 
@@ -48,7 +48,7 @@ namespace Vitorm.ElasticSearch
 
             var strResponse = await response.Content.ReadAsStringAsync();
 
-            var result = Deserialize<AddResult>(strResponse);
+            var result = Deserialize<ActionResult>(strResponse);
 
             if (result.error?.reason != null)
             {
@@ -73,7 +73,7 @@ namespace Vitorm.ElasticSearch
             }
         }
 
-        class AddResult
+        class ActionResult
         {
             public string _index { get; set; }
             public string _type { get; set; }
@@ -116,7 +116,7 @@ namespace Vitorm.ElasticSearch
         #endregion
 
 
-        #region BulkAsync
+        #region ExecuteBulkActionAsync
 
 
         /// <summary>
@@ -126,7 +126,7 @@ namespace Vitorm.ElasticSearch
         /// <param name="entities"></param>
         /// <param name="indexName"></param>
         /// <param name="action"></param>
-        protected async Task<BulkResponse> BulkAsync<Entity>(IEntityDescriptor entityDescriptor, IEnumerable<Entity> entities, string indexName, string action)
+        protected async Task<BulkResponse> ExecuteBulkActionAsync<Entity>(IEntityDescriptor entityDescriptor, IEnumerable<Entity> entities, string indexName, string action)
         {
             var payload = new StringBuilder();
 
@@ -217,6 +217,25 @@ namespace Vitorm.ElasticSearch
             }
         }
 
+        #endregion
+
+
+
+        #region ExecuteSearch
+        public virtual async Task<Result> ExecuteSearchAsync<Result>(object queryPayload, string searchUrl = null, string indexName = null)
+        {
+            if (queryPayload is not string strQuery) strQuery = Serialize(queryPayload);
+
+            searchUrl ??= $"{readOnlyServerAddress}/{indexName}/_search";
+
+            using var searchContent = new StringContent(strQuery, Encoding.UTF8, "application/json");
+            using var httpResponse = await httpClient.PostAsync(searchUrl, searchContent);
+
+            var strResponse = await httpResponse.Content.ReadAsStringAsync();
+            if (!httpResponse.IsSuccessStatusCode) throw new Exception(strResponse);
+
+            return Deserialize<Result>(strResponse);
+        }
         #endregion
     }
 }
