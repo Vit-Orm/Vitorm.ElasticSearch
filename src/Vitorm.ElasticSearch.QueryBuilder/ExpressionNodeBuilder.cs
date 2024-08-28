@@ -219,7 +219,25 @@ namespace Vitorm.ElasticSearch.QueryBuilder
                             #endregion
 
                             // ##2 Contains
-                            case nameof(Enumerable.Contains):
+                            case nameof(List<string>.Contains) when methodCall.@object is not null && methodCall.arguments.Length == 1:
+                                {
+                                    ExpressionNode valueNode = methodCall.@object;
+                                    ExpressionNode memberNode = methodCall.arguments[0];
+                                    var field = GetNodeField(arg, memberNode);
+                                    var value = GetNodeValue(arg, valueNode);
+
+                                    if (memberNode.Member_GetType() == typeof(string))
+                                    {
+                                        // {"terms":{"name":["lith1","lith2"] } }
+                                        return new { terms = new Dictionary<string, object> { [field + ".keyword"] = value } };
+                                    }
+                                    else
+                                    {
+                                        // {"terms":{"id":[12,15] } }
+                                        return new { terms = new Dictionary<string, object> { [field] = value } };
+                                    }
+                                }
+                            case nameof(Enumerable.Contains) when methodCall.arguments.Length == 2:
                                 {
                                     ExpressionNode valueNode = methodCall.arguments[0];
                                     ExpressionNode memberNode = methodCall.arguments[1];
