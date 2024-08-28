@@ -3,6 +3,7 @@
 -----------------------
 # 2.1.1
 - support Group query
+- [Vitorm.Data] load config from appsettings.json
 
 
 -----------------------

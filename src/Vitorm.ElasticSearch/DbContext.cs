@@ -52,6 +52,11 @@ namespace Vitorm.ElasticSearch
             }
             this.httpClient = httpClient;
 
+            if (!string.IsNullOrWhiteSpace(dbConfig.dateFormat)) this.dateFormat = dbConfig.dateFormat;
+            if (dbConfig.maxResultWindowSize.HasValue) this.maxResultWindowSize = dbConfig.maxResultWindowSize.Value;
+            if (dbConfig.track_total_hits.HasValue) this.track_total_hits = dbConfig.track_total_hits.Value;
+
+
             this.GetEntityIndex = GetDefaultIndex;
 
             dbGroupName = "ES_DbSet_" + GetHashCode();
@@ -85,8 +90,8 @@ namespace Vitorm.ElasticSearch
 
 
         // GetDocumentId
-        public Func<IEntityDescriptor, object, string> GetDocumentId = (entityDescriptor, entity) => entityDescriptor?.key?.GetValue(entity)?.ToString();
-
+        public static Func<IEntityDescriptor, object, string> DefaultGetDocumentId = (IEntityDescriptor entityDescriptor, object entity) => entityDescriptor?.key?.GetValue(entity)?.ToString();
+        public Func<IEntityDescriptor, object, string> GetDocumentId = DefaultGetDocumentId;
 
         public static string GetEntityId(IEntityDescriptor entityDescriptor, object entity)
         {

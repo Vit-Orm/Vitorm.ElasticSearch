@@ -10,20 +10,13 @@ namespace Vitorm.ElasticSearch
         Vitorm.DbContext IDataProvider.CreateDbContext() => this.CreateDbContext();
 
         protected Dictionary<string, object> config;
-        protected string connectionString;
-        protected int? commandTimeout;
-        protected Vitorm.ElasticSearch.DbContext dbContext;
-        public DbContext CreateDbContext() => dbContext ??= new Vitorm.ElasticSearch.DbContext(serverAddress: connectionString, commandTimeout: commandTimeout);
+        protected DbConfig dbConfig;
+        public DbContext CreateDbContext() => new Vitorm.ElasticSearch.DbContext(dbConfig);
 
         public void Init(Dictionary<string, object> config)
         {
             this.config = config;
-
-            if (config.TryGetValue("connectionString", out var connStr))
-                this.connectionString = connStr as string;
-
-            if (config.TryGetValue("commandTimeout", out var strCommandTimeout) && int.TryParse("" + strCommandTimeout, out var commandTimeout))
-                this.commandTimeout = commandTimeout;
+            this.dbConfig = new(config);
         }
 
 
