@@ -5,7 +5,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Vitorm.MsTest.CommonTest
 {
-    //[TestClass]
+    [TestClass]
     public class Query_Group_Test
     {
 
@@ -63,8 +63,7 @@ namespace Vitorm.MsTest.CommonTest
                 var query =
                         from user in userQuery.Where(u => u.id > 1)
                         group user by new { user.fatherId, user.motherId } into userGroup
-                        where userGroup.Key.motherId != null && userGroup.Count() >= 1
-                        orderby userGroup.Key.fatherId descending, userGroup.Count() descending
+                        orderby userGroup.Key.fatherId descending
                         select new { userGroup.Key.fatherId, userGroup.Key.motherId, rowCount = userGroup.Count(), maxId = userGroup.Max(m => m.id) };
 
                 query = query.Skip(1).Take(1);
@@ -85,7 +84,6 @@ namespace Vitorm.MsTest.CommonTest
                         userQuery
                         .Where(u => u.id > 1)
                         .GroupBy(user => new { user.fatherId, user.motherId })
-                        .Where(userGroup => userGroup.Key.motherId != null)
                         .OrderByDescending(userGroup => userGroup.Key.fatherId)
                         .Select(userGroup => new
                         {
@@ -123,7 +121,7 @@ namespace Vitorm.MsTest.CommonTest
                     userQuery
                     .Where(user => user.id < 7)
                     .GroupBy(user => new { user.fatherId, user.motherId })
-                    .OrderByDescending(group => group.Count())
+                    .OrderByDescending(group => group.Key.fatherId)
                     .Select(userGroup => new
                     {
                         userGroup.Key.fatherId,
@@ -135,7 +133,6 @@ namespace Vitorm.MsTest.CommonTest
                     })
                     ;
 
-                var sql = query.ToExecuteString();
                 var rows = query.ToList();
 
                 Assert.AreEqual(3, rows.Count);
@@ -150,30 +147,54 @@ namespace Vitorm.MsTest.CommonTest
                 var query =
                     userQuery
                     .GroupBy(user => new { user.fatherId, user.motherId })
-                    .Where(userGroup => userGroup.Key.motherId != null)
                     .OrderByDescending(userGroup => userGroup.Key.fatherId)
                     .Select(userGroup => new { userGroup.Key.fatherId, userGroup.Key.motherId })
                     ;
 
                 var rows = query.ToList();
-                var sql = query.ToExecuteString();
 
-                Assert.AreEqual(2, rows.Count);
+                Assert.AreEqual(3, rows.Count);
+                Assert.AreEqual(5, rows[0].fatherId);
+            }
+
+            {
+                var query =
+                    userQuery
+                    .GroupBy(user => user.fatherId)
+                    .OrderByDescending(userGroup => userGroup.Key)
+                    .Select(userGroup => new { fatherId = userGroup.Key })
+                    ;
+
+                var rows = query.ToList();
+
+                Assert.AreEqual(3, rows.Count);
                 Assert.AreEqual(5, rows[0].fatherId);
             }
             {
                 var query =
                     userQuery
+                    .GroupBy(user => new { fid = user.fatherId, user.motherId })
+                    .OrderByDescending(userGroup => userGroup.Key.fid)
+                    .Select(userGroup => new { fatherId = userGroup.Key.fid, userGroup.Key.motherId })
+                    ;
+
+                var rows = query.ToList();
+
+                Assert.AreEqual(3, rows.Count);
+                Assert.AreEqual(5, rows[0].fatherId);
+            }
+
+            {
+                var query =
+                    userQuery
                     .GroupBy(user => user.fatherId)
-                    .Where(userGroup => userGroup.Key != null)
                     .OrderByDescending(userGroup => userGroup.Key)
                     .Select(userGroup => new { fatherId = userGroup.Key, rowCount = userGroup.Count() })
                     ;
 
                 var rows = query.ToList();
-                var sql = query.ToExecuteString();
 
-                Assert.AreEqual(2, rows.Count);
+                Assert.AreEqual(3, rows.Count);
                 Assert.AreEqual(5, rows[0].fatherId);
             }
         }

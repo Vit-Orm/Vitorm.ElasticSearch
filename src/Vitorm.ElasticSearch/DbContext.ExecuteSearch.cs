@@ -25,7 +25,7 @@ namespace Vitorm.ElasticSearch
 
 
         #region SearchExecutor
-        public static List<ISearchExecutor> defaultSearchExecutor = new() { new PlainSearchExecutor() };
+        public static List<ISearchExecutor> defaultSearchExecutor = new() { new PlainSearchExecutor(), new GroupExecutor() };
         public List<ISearchExecutor> searchExecutor = defaultSearchExecutor;
         #endregion
 

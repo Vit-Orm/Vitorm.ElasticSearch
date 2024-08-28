@@ -1,6 +1,11 @@
 ﻿# Vitorm.ElasticSearch ReleaseLog
 
 -----------------------
+# 2.1.1
+- support Group query
+
+
+-----------------------
 # 2.0.5
 - refactor QueryExecutor
 
