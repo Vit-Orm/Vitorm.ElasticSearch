@@ -34,6 +34,21 @@ namespace Vitorm.ElasticSearch
         }
 
 
+        protected virtual async Task<HttpResponseMessage> SendHttpRequestAsync(string url, HttpMethod httpMethod, object payload = null)
+        {
+            this.Event_OnExecuting(executeString: url, param: payload);
+
+            string strPayload = payload as string;
+            if (strPayload == null && payload is not null) strPayload = Serialize(payload);
+
+            using var content = strPayload == null ? null : new StringContent(strPayload, Encoding.UTF8, "application/json");
+            using var httpRequestMessage = new HttpRequestMessage(httpMethod ?? HttpMethod.Get, url) { Content = content };
+            return await httpClient.SendAsync(httpRequestMessage);
+        }
+
+
+
+
         #region ExecuteActionAsync
         protected virtual async Task<Entity> ExecuteActionAsync<Entity>(IEntityDescriptor entityDescriptor, Entity entity, string indexName, string action, HttpMethod httpMethod = null)
         {
@@ -41,10 +56,7 @@ namespace Vitorm.ElasticSearch
 
             string actionUrl = $"{serverAddress}/{indexName}/{action}/{_id}";
 
-            using var content = new StringContent(Serialize(entity), Encoding.UTF8, "application/json");
-            using var httpRequestMessage = new HttpRequestMessage(httpMethod ?? HttpMethod.Post, actionUrl) { Content = content };
-
-            using HttpResponseMessage response = await httpClient.SendAsync(httpRequestMessage);
+            using HttpResponseMessage response = await SendHttpRequestAsync(actionUrl, httpMethod ?? HttpMethod.Post, entity);
 
             var strResponse = await response.Content.ReadAsStringAsync();
 
@@ -173,8 +185,8 @@ namespace Vitorm.ElasticSearch
                 }
             }
             var actionUrl = $"{serverAddress}/{indexName}/_bulk";
-            using var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
-            using var httpResponse = await httpClient.PostAsync(actionUrl, content);
+
+            using var httpResponse = await SendHttpRequestAsync(actionUrl, HttpMethod.Post, payload.ToString());
 
             var strResponse = await httpResponse.Content.ReadAsStringAsync();
             if (string.IsNullOrWhiteSpace(strResponse)) httpResponse.EnsureSuccessStatusCode();
@@ -224,12 +236,9 @@ namespace Vitorm.ElasticSearch
         #region ExecuteSearch
         public virtual async Task<Result> ExecuteSearchAsync<Result>(object queryPayload, string searchUrl = null, string indexName = null)
         {
-            if (queryPayload is not string strQuery) strQuery = Serialize(queryPayload);
-
             searchUrl ??= $"{readOnlyServerAddress}/{indexName}/_search";
 
-            using var searchContent = new StringContent(strQuery, Encoding.UTF8, "application/json");
-            using var httpResponse = await httpClient.PostAsync(searchUrl, searchContent);
+            using var httpResponse = await SendHttpRequestAsync(searchUrl, HttpMethod.Post, queryPayload);
 
             var strResponse = await httpResponse.Content.ReadAsStringAsync();
             if (!httpResponse.IsSuccessStatusCode) throw new Exception(strResponse);

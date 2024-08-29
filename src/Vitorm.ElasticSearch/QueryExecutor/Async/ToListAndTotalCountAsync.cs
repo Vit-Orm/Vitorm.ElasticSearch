@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 
 using Vitorm.StreamQuery;
 
-
 namespace Vitorm.ElasticSearch.QueryExecutor
 {
     public partial class ToListAndTotalCountAsync : IQueryExecutor
