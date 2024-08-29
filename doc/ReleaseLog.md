@@ -1,6 +1,12 @@
 ﻿# Vitorm.ElasticSearch ReleaseLog
 
 -----------------------
+# 2.1.1
+- support Group query
+- [Vitorm.Data] load config from appsettings.json
+
+
+-----------------------
 # 2.0.5
 - refactor QueryExecutor
 

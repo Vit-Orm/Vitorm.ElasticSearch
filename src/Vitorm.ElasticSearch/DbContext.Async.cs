@@ -29,7 +29,7 @@ namespace Vitorm.ElasticSearch
         {
             var searchUrl = $"{readOnlyServerAddress}/{indexName}/_mapping";
 
-            using var httpResponse = await httpClient.GetAsync(searchUrl);
+            using var httpResponse = await SendHttpRequestAsync(searchUrl, HttpMethod.Get);
             var strResponse = await httpResponse.Content.ReadAsStringAsync();
 
             if (throwErrorIfFailed && !httpResponse.IsSuccessStatusCode) throw new Exception(strResponse);
@@ -49,9 +49,8 @@ namespace Vitorm.ElasticSearch
             var url = $"{serverAddress}/{indexName}";
 
             var strMapping = BuildMapping<Entity>();
-            var content = new StringContent(strMapping, Encoding.UTF8, "application/json");
 
-            using var httpResponse = await httpClient.PutAsync(url, content);
+            using var httpResponse = await SendHttpRequestAsync(url, HttpMethod.Put, strMapping);
             var strResponse = await httpResponse.Content.ReadAsStringAsync();
 
             if (throwErrorIfFailed && !httpResponse.IsSuccessStatusCode) throw new Exception(strResponse);
@@ -149,7 +148,7 @@ namespace Vitorm.ElasticSearch
         public virtual async Task TryDropTableAsync(string indexName)
         {
             var url = $"{serverAddress}/{indexName}";
-            using var httpResponse = await httpClient.DeleteAsync(url);
+            using var httpResponse = await SendHttpRequestAsync(url, HttpMethod.Delete);
 
             if (httpResponse.IsSuccessStatusCode) return;
 
@@ -176,11 +175,11 @@ namespace Vitorm.ElasticSearch
 
             if (String.IsNullOrEmpty(_id))
             {
-                return await SingleActionAsync(entityDescriptor, entity, indexName, "_doc");
+                return await ExecuteActionAsync(entityDescriptor, entity, indexName, "_doc");
             }
             else
             {
-                return await SingleActionAsync(entityDescriptor, entity, indexName, "_create");
+                return await ExecuteActionAsync(entityDescriptor, entity, indexName, "_create");
             }
         }
 
@@ -196,7 +195,7 @@ namespace Vitorm.ElasticSearch
         public virtual async Task AddRangeAsync<Entity>(IEnumerable<Entity> entities, string indexName)
         {
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
-            var bulkResult = await BulkAsync(entityDescriptor, entities, indexName, "create");
+            var bulkResult = await ExecuteBulkActionAsync(entityDescriptor, entities, indexName, "create");
 
             if (bulkResult.errors == true)
             {
@@ -231,7 +230,7 @@ namespace Vitorm.ElasticSearch
         {
             var actionUrl = $"{readOnlyServerAddress}/{indexName}/_doc/" + keyValue;
 
-            using var httpResponse = await httpClient.GetAsync(actionUrl);
+            using var httpResponse = await SendHttpRequestAsync(actionUrl, HttpMethod.Get);
 
             if (httpResponse.StatusCode == HttpStatusCode.NotFound)
             {
@@ -298,7 +297,7 @@ namespace Vitorm.ElasticSearch
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
             if (entities.Any(entity => string.IsNullOrWhiteSpace(GetDocumentId(entityDescriptor, entity)))) throw new ArgumentNullException("_id");
 
-            var bulkResult = await BulkAsync(entityDescriptor, entities, indexName, "update");
+            var bulkResult = await ExecuteBulkActionAsync(entityDescriptor, entities, indexName, "update");
 
             if (bulkResult.items.Any() != true) ThrowException(bulkResult.responseBody);
 
@@ -322,7 +321,7 @@ namespace Vitorm.ElasticSearch
         {
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
 
-            entity = await SingleActionAsync(entityDescriptor, entity, indexName, "_doc");
+            entity = await ExecuteActionAsync(entityDescriptor, entity, indexName, "_doc");
             return entity != null ? 1 : 0;
         }
 
@@ -335,7 +334,7 @@ namespace Vitorm.ElasticSearch
         public virtual async Task SaveRangeAsync<Entity>(IEnumerable<Entity> entities, string indexName)
         {
             var entityDescriptor = GetEntityDescriptor(typeof(Entity));
-            var bulkResult = await BulkAsync(entityDescriptor, entities, indexName, "index");
+            var bulkResult = await ExecuteBulkActionAsync(entityDescriptor, entities, indexName, "index");
 
             if (bulkResult.errors == true)
             {
@@ -404,7 +403,8 @@ namespace Vitorm.ElasticSearch
 
             var actionUrl = $"{serverAddress}/{indexName}/_doc/" + _id;
 
-            using var httpResponse = await httpClient.DeleteAsync(actionUrl);
+            using var httpResponse = await SendHttpRequestAsync(actionUrl, HttpMethod.Delete);
+
             return httpResponse.IsSuccessStatusCode ? 1 : 0;
 
             //var strResponse = httpResponse.Content.ReadAsStringAsync().Result;
@@ -441,8 +441,8 @@ namespace Vitorm.ElasticSearch
                 payload.AppendLine($"{{\"delete\":{{\"_index\":\"{indexName}\",\"_id\":\"{_id}\"}}}}");
             }
             var actionUrl = $"{serverAddress}/{indexName}/_bulk";
-            using var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
-            using var httpResponse = await httpClient.PostAsync(actionUrl, content);
+
+            using var httpResponse = await SendHttpRequestAsync(actionUrl, HttpMethod.Post, payload.ToString());
 
             var strResponse = await httpResponse.Content.ReadAsStringAsync();
             if (string.IsNullOrWhiteSpace(strResponse)) httpResponse.EnsureSuccessStatusCode();

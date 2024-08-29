@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Net.Http;
 
+using Newtonsoft.Json;
+
 using Vit.Core.Module.Serialization;
 
 using Vitorm.Entity;
@@ -24,11 +26,11 @@ namespace Vitorm.ElasticSearch
         /// <summary>
         /// es address, example:"http://localhost:9200"
         /// </summary>
-        public string readOnlyServerAddress => _readOnlyServerAddress ?? serverAddress;
+        public string readOnlyServerAddress { get => _readOnlyServerAddress ?? serverAddress; set => _readOnlyServerAddress = value; }
 
 
-        protected System.Net.Http.HttpClient httpClient = null;
-        protected static System.Net.Http.HttpClient defaultHttpClient = null;
+        public System.Net.Http.HttpClient httpClient = null;
+        public static System.Net.Http.HttpClient defaultHttpClient = null;
 
         public DbContext(string serverAddress, System.Net.Http.HttpClient httpClient = null, int? commandTimeout = null)
             : this(new DbConfig(connectionString: serverAddress, commandTimeout: commandTimeout), httpClient)
@@ -42,20 +44,25 @@ namespace Vitorm.ElasticSearch
 
             if (httpClient == null)
             {
-                defaultHttpClient ??= CreatHttpClient();
+                defaultHttpClient ??= CreateHttpClient();
                 if (dbConfig.commandTimeout.HasValue && dbConfig.commandTimeout.Value != (int)defaultHttpClient.Timeout.TotalSeconds)
-                    httpClient = CreatHttpClient(dbConfig.commandTimeout.Value);
+                    httpClient = CreateHttpClient(dbConfig.commandTimeout.Value);
                 else
                     httpClient = defaultHttpClient;
             }
             this.httpClient = httpClient;
+
+            if (!string.IsNullOrWhiteSpace(dbConfig.dateFormat)) this.dateFormat = dbConfig.dateFormat;
+            if (dbConfig.maxResultWindowSize.HasValue) this.maxResultWindowSize = dbConfig.maxResultWindowSize.Value;
+            if (dbConfig.track_total_hits.HasValue) this.track_total_hits = dbConfig.track_total_hits.Value;
+
 
             this.GetEntityIndex = GetDefaultIndex;
 
             dbGroupName = "ES_DbSet_" + GetHashCode();
         }
 
-        HttpClient CreatHttpClient(int? commandTimeout = null)
+        HttpClient CreateHttpClient(int? commandTimeout = null)
         {
             // trust all certificate
             var HttpHandler = new HttpClientHandler
@@ -83,8 +90,8 @@ namespace Vitorm.ElasticSearch
 
 
         // GetDocumentId
-        public Func<IEntityDescriptor, object, string> GetDocumentId = (entityDescriptor, entity) => entityDescriptor?.key?.GetValue(entity)?.ToString();
-
+        public static Func<IEntityDescriptor, object, string> DefaultGetDocumentId = (IEntityDescriptor entityDescriptor, object entity) => entityDescriptor?.key?.GetValue(entity)?.ToString();
+        public Func<IEntityDescriptor, object, string> GetDocumentId = DefaultGetDocumentId;
 
         public static string GetEntityId(IEntityDescriptor entityDescriptor, object entity)
         {
@@ -103,8 +110,10 @@ namespace Vitorm.ElasticSearch
         // Serialize
         public virtual string Serialize<Model>(Model m)
         {
-            return Json.Serialize(m);
+            return JsonConvert.SerializeObject(m, serializeSetting);
         }
+        public static readonly JsonSerializerSettings defaultSerializeSetting = new() { NullValueHandling = NullValueHandling.Include, DateFormatHandling = DateFormatHandling.IsoDateFormat, DateFormatString = "yyyy-MM-dd HH:mm:ss" };
+        public JsonSerializerSettings serializeSetting { get; set; } = defaultSerializeSetting;
         public virtual Model Deserialize<Model>(string jsonString)
         {
             return Json.Deserialize<Model>(jsonString);

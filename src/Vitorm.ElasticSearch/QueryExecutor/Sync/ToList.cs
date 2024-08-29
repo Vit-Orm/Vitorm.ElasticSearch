@@ -22,14 +22,24 @@ namespace Vitorm.ElasticSearch.QueryExecutor
             return Execute_MethodInfo(entityType, resultEntityType).Invoke(null, new object[] { execArg });
         }
 
+        public static IEnumerable<Result> Execute<Entity, Result>(QueryExecutorArgument execArg)
+        {
+            var combinedStream = execArg.combinedStream;
+            var dbContext = execArg.dbContext;
 
-        public static List<Result> Execute<Entity, Result>(QueryExecutorArgument execArg)
-           => ToListAsync.Execute<Entity, Result>(execArg).Result;
+            var searchArg = new SearchExecutorArgument<Result> { combinedStream = execArg.combinedStream, dbContext = execArg.dbContext, indexName = execArg.indexName };
+            searchArg.needList = true;
+            searchArg.needTotalCount = false;
+
+            dbContext.ExecuteSearchAsync<Entity, Result>(searchArg).Wait();
+
+            return searchArg.list;
+        }
 
 
         private static MethodInfo Execute_MethodInfo_;
         static MethodInfo Execute_MethodInfo(Type entityType, Type resultEntityType) =>
-            (Execute_MethodInfo_ ??= new Func<QueryExecutorArgument, List<string>>(Execute<object, string>).Method.GetGenericMethodDefinition())
+            (Execute_MethodInfo_ ??= new Func<QueryExecutorArgument, IEnumerable<string>>(Execute<object, string>).Method.GetGenericMethodDefinition())
             .MakeGenericMethod(entityType, resultEntityType);
 
     }

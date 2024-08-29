@@ -5,11 +5,11 @@ using System.Linq;
 
 using Vit.Linq.ExpressionNodes.ComponentModel;
 
-using Convertor = System.Func<Vitorm.ElasticSearch.ExpressionNodeConvertArgrument, Vit.Linq.ExpressionNodes.ComponentModel.ExpressionNode, (bool success, object query)>;
+using Convertor = System.Func<Vitorm.ElasticSearch.QueryBuilder.ExpressionNodeConvertArgument, Vit.Linq.ExpressionNodes.ComponentModel.ExpressionNode, (bool success, object query)>;
 
-namespace Vitorm.ElasticSearch
+namespace Vitorm.ElasticSearch.QueryBuilder
 {
-    public class ExpressionNodeConvertArgrument
+    public class ExpressionNodeConvertArgument
     {
         public ExpressionNodeBuilder builder { get; set; }
     }
@@ -46,9 +46,9 @@ namespace Vitorm.ElasticSearch
 
 
         public Dictionary<string, string> conditionTypeMap
-          = new Dictionary<string, string> { [NodeType.AndAlso] = "filter", [NodeType.OrElse] = "should", [NodeType.Not] = "must_not" };
+          = new() { [NodeType.AndAlso] = "filter", [NodeType.OrElse] = "should", [NodeType.Not] = "must_not" };
 
-        protected virtual object ConvertExpressionNodeToQuery(ExpressionNodeConvertArgrument arg, ExpressionNode node)
+        protected virtual object ConvertExpressionNodeToQuery(ExpressionNodeConvertArgument arg, ExpressionNode node)
         {
             switch (node.nodeType)
             {
@@ -219,7 +219,25 @@ namespace Vitorm.ElasticSearch
                             #endregion
 
                             // ##2 Contains
-                            case nameof(Enumerable.Contains):
+                            case nameof(List<string>.Contains) when methodCall.@object is not null && methodCall.arguments.Length == 1:
+                                {
+                                    ExpressionNode valueNode = methodCall.@object;
+                                    ExpressionNode memberNode = methodCall.arguments[0];
+                                    var field = GetNodeField(arg, memberNode);
+                                    var value = GetNodeValue(arg, valueNode);
+
+                                    if (memberNode.Member_GetType() == typeof(string))
+                                    {
+                                        // {"terms":{"name":["lith1","lith2"] } }
+                                        return new { terms = new Dictionary<string, object> { [field + ".keyword"] = value } };
+                                    }
+                                    else
+                                    {
+                                        // {"terms":{"id":[12,15] } }
+                                        return new { terms = new Dictionary<string, object> { [field] = value } };
+                                    }
+                                }
+                            case nameof(Enumerable.Contains) when methodCall.arguments.Length == 2:
                                 {
                                     ExpressionNode valueNode = methodCall.arguments[0];
                                     ExpressionNode memberNode = methodCall.arguments[1];
@@ -268,7 +286,7 @@ namespace Vitorm.ElasticSearch
             nameof(Object_Extensions_Property.Property),
         };
 
-        public virtual bool NodeIsField(ExpressionNodeConvertArgrument arg, ExpressionNode node)
+        public virtual bool NodeIsField(ExpressionNodeConvertArgument arg, ExpressionNode node)
         {
             if (node.nodeType == NodeType.Member) return true;
             if (node.nodeType == NodeType.MethodCall && fieldMethodNames.Contains(node.methodName))
@@ -276,14 +294,14 @@ namespace Vitorm.ElasticSearch
             return false;
         }
 
-        public virtual string GetNodeField(ExpressionNodeConvertArgrument arg, ExpressionNode node) => GetNodeField(arg, node, out _);
+        public virtual string GetNodeField(ExpressionNodeConvertArgument arg, ExpressionNode node) => GetNodeField(arg, node, out _);
         public virtual string GetNodeField(ExpressionNode node, out Type type) => GetNodeField(new() { builder = this }, node, out type);
 
         protected static bool IsNullable(Type type)
         {
             return type?.IsGenericType == true && typeof(Nullable<>) == type.GetGenericTypeDefinition();
         }
-        public virtual string GetNodeField(ExpressionNodeConvertArgrument arg, ExpressionNode node, out Type type)
+        public virtual string GetNodeField(ExpressionNodeConvertArgument arg, ExpressionNode node, out Type type)
         {
             // bool?.Value
             if (node?.nodeType == NodeType.Member && node.objectValue != null && node.memberName == nameof(Nullable<bool>.Value))
@@ -377,7 +395,7 @@ namespace Vitorm.ElasticSearch
 
         #endregion
 
-        public virtual object GetNodeValue(ExpressionNodeConvertArgrument arg, ExpressionNode_Constant data) => data?.value;
+        public virtual object GetNodeValue(ExpressionNodeConvertArgument arg, ExpressionNode_Constant data) => data?.value;
 
 
     }

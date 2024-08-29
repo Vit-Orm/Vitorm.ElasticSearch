@@ -49,7 +49,7 @@ namespace Vitorm.ElasticSearch
 
                 // send query request
                 {
-                    var searchResult = await InvokeQueryAsync<QueryResponse<Entity>>(queryBody, searchUrl: searchUrl);
+                    var searchResult = await ExecuteSearchAsync<QueryResponse<Entity>>(queryBody, searchUrl: searchUrl);
                     scroll_id = searchResult._scroll_id;
                     //items = searchResult?.hits?.hits?.Select(hit => hit?._source).ToList();
                     items = searchResult?.hits?.hits?.Select(hit => hit.GetSource(this, entityDescriptor)).ToList();
@@ -79,7 +79,7 @@ namespace Vitorm.ElasticSearch
 
                 // send query request
                 {
-                    var searchResult = await InvokeQueryAsync<QueryResponse<Entity>>(queryBody, searchUrl: searchUrl);
+                    var searchResult = await ExecuteSearchAsync<QueryResponse<Entity>>(queryBody, searchUrl: searchUrl);
                     scroll_id = searchResult._scroll_id;
                     //items = searchResult?.hits?.hits?.Select(hit => hit?._source).ToList();
                     items = searchResult?.hits?.hits?.Select(hit => hit.GetSource(this, entityDescriptor)).ToList();
