@@ -9,7 +9,7 @@ Tool to convert FilterRule or ExpressionNode to ElasticSearch Query Request
 
 | Build | NuGet |
 | -------- | -------- |
-|![](https://github.com/Vit-Orm/Vitorm.ElasticSearch/workflows/ki_devops3/badge.svg) | [![](https://img.shields.io/nuget/v/Vitorm.ElasticSearch.svg)](https://www.nuget.org/packages/Vitorm.ElasticSearch.QueryBuilder) ![](https://img.shields.io/nuget/dt/Vitorm.ElasticSearch.QueryBuilder.svg) |
+|![](https://github.com/Vit-Orm/Vitorm.ElasticSearch/workflows/ki_devops3_build/badge.svg) | [![](https://img.shields.io/nuget/v/Vitorm.ElasticSearch.svg)](https://www.nuget.org/packages/Vitorm.ElasticSearch.QueryBuilder) ![](https://img.shields.io/nuget/dt/Vitorm.ElasticSearch.QueryBuilder.svg) |
 
 
 
