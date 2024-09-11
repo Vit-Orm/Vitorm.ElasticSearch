@@ -26,7 +26,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Vitorm.ElasticSearch.QueryB
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Vitorm.ElasticSearch.Console", "test\Vitorm.ElasticSearch.Console\Vitorm.ElasticSearch.Console.csproj", "{4EC77808-51BE-45A6-92FD-9384CB04FE31}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Vitorm.Data.MsTest", "test\Vitorm.Data.MsTest\Vitorm.Data.MsTest.csproj", "{8643E97D-C1A8-434C-A393-CB1C4AA0B0D8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Vitorm.ElasticSearch.Data.MsTest", "test\Vitorm.ElasticSearch.Data.MsTest\Vitorm.ElasticSearch.Data.MsTest.csproj", "{89DB5DD4-E4D6-4ACE-A12E-CA9FC9CCF870}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -50,10 +50,10 @@ Global
 		{4EC77808-51BE-45A6-92FD-9384CB04FE31}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4EC77808-51BE-45A6-92FD-9384CB04FE31}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4EC77808-51BE-45A6-92FD-9384CB04FE31}.Release|Any CPU.Build.0 = Release|Any CPU
-		{8643E97D-C1A8-434C-A393-CB1C4AA0B0D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8643E97D-C1A8-434C-A393-CB1C4AA0B0D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8643E97D-C1A8-434C-A393-CB1C4AA0B0D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8643E97D-C1A8-434C-A393-CB1C4AA0B0D8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{89DB5DD4-E4D6-4ACE-A12E-CA9FC9CCF870}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{89DB5DD4-E4D6-4ACE-A12E-CA9FC9CCF870}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{89DB5DD4-E4D6-4ACE-A12E-CA9FC9CCF870}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{89DB5DD4-E4D6-4ACE-A12E-CA9FC9CCF870}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -63,7 +63,7 @@ Global
 		{A3F32D76-DD54-4CDF-8B5A-ACE00D86A222} = {7904FE51-04FF-4477-8E3A-CC340389EE32}
 		{0F9E7FC4-EB61-4F5D-A26B-C5E1016556C3} = {05176905-A2A5-4015-9F04-2904506C902F}
 		{4EC77808-51BE-45A6-92FD-9384CB04FE31} = {7904FE51-04FF-4477-8E3A-CC340389EE32}
-		{8643E97D-C1A8-434C-A393-CB1C4AA0B0D8} = {7904FE51-04FF-4477-8E3A-CC340389EE32}
+		{89DB5DD4-E4D6-4ACE-A12E-CA9FC9CCF870} = {7904FE51-04FF-4477-8E3A-CC340389EE32}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C7DA16E3-9949-49FA-B0B4-F830636DE60F}

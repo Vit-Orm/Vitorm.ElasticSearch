@@ -1,10 +1,8 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-using User = Vitorm.MsTest.ElasticSearch.User;
-
-namespace Vitorm.MsTest.ElasticSearch
+namespace Vitorm.MsTest.CommonTest
 {
-    public class User : Vitorm.MsTest.UserBase
+    public class User : Vitorm.MsTest.CommonTest.UserBase
     {
         [System.ComponentModel.DataAnnotations.Key]
         [System.Text.Json.Serialization.JsonIgnore]
@@ -13,14 +11,10 @@ namespace Vitorm.MsTest.ElasticSearch
 
         public override int id { get; set; }
     }
-}
 
-
-namespace Vitorm.MsTest
-{
 
     [TestClass]
-    public partial class ElasticSearch_Test : UserTest<User>
+    public partial class Common_Test : UserTest<User>
     {
 
         [TestMethod]
