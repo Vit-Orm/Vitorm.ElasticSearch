@@ -11,12 +11,13 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <Authors>Lith</Authors>
         <Description>orm for ElasticSearch</Description>
-        <PackageProjectUrl>https://github.com/Vit-Orm/Vitorm.ElasticSearch</PackageProjectUrl>
+        <PackageTags>orm vitorm database ElasticSearch</PackageTags>
+    </PropertyGroup>
+
+    <PropertyGroup>
         <PackageIcon>vitorm_logo_v1.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <PackageTags>orm vitorm database ElasticSearch</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>

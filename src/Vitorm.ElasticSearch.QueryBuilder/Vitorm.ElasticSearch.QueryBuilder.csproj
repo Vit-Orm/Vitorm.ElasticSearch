@@ -11,12 +11,14 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <Authors>Lith</Authors>
         <Description>Tool to convert FilterRule or ExpressionNode to ElasticSearch Query Request</Description>
+        <PackageTags>ElasticSearch QueryBulder</PackageTags>
         <PackageProjectUrl>https://github.com/Vit-Orm/Vitorm.ElasticSearch/src/Vitorm.ElasticSearch.QueryBuilder</PackageProjectUrl>
+    </PropertyGroup>
+
+    <PropertyGroup>
         <PackageIcon>vitorm_logo_v1.png</PackageIcon>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <PackageTags>ElasticSearch QueryBulder</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>
