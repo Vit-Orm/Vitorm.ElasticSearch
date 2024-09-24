@@ -1,4 +1,4 @@
-﻿# Vitorm.ElasticSearch ReleaseLog
+﻿# Vitorm.ElasticSearch ReleaseNotes
 
 -----------------------
 # 2.1.1
