@@ -1,5 +1,12 @@
 ﻿# Vitorm.ElasticSearch ReleaseNotes
 
+
+-----------------------
+# 2.2.1
+- refresh, control when changes made by this request are made visible to search
+> https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-refresh.html
+
+
 -----------------------
 # 2.1.1
 - support Group query
