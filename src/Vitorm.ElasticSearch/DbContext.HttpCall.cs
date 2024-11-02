@@ -40,7 +40,7 @@ namespace Vitorm.ElasticSearch
         }
 
 
-        protected virtual async Task<HttpResponseMessage> SendHttpRequestAsync(string url, HttpMethod httpMethod, object payload = null)
+        public virtual async Task<HttpResponseMessage> SendHttpRequestAsync(string url, HttpMethod httpMethod, object payload = null)
         {
             this.Event_OnExecuting(executeString: url, param: payload);
 

@@ -37,7 +37,7 @@ namespace Vitorm.ElasticSearch
         }
         #endregion
 
-        #region #1.1 Schema :  TryCreateTable
+        #region #1.1 Schema : TryCreateTable
 
         public override async Task TryCreateTableAsync<Entity>()
         {
@@ -138,7 +138,7 @@ namespace Vitorm.ElasticSearch
         }
         #endregion
 
-        #region #1.2 Schema :  TryDropTable
+        #region #1.2 Schema : TryDropTable
         public override async Task TryDropTableAsync<Entity>()
         {
             var indexName = GetIndex<Entity>();
@@ -148,6 +148,7 @@ namespace Vitorm.ElasticSearch
         public virtual async Task TryDropTableAsync(string indexName)
         {
             var url = $"{serverAddress}/{indexName}";
+
             using var httpResponse = await SendHttpRequestAsync(url, HttpMethod.Delete);
 
             if (httpResponse.IsSuccessStatusCode) return;
@@ -160,7 +161,7 @@ namespace Vitorm.ElasticSearch
         #endregion
 
 
-        #region #1.1 Create :  Add
+        #region #1.1 Create : Add
 
         public override async Task<Entity> AddAsync<Entity>(Entity entity)
         {
@@ -186,7 +187,7 @@ namespace Vitorm.ElasticSearch
         #endregion
 
 
-        #region #1.2 Create :  AddRange
+        #region #1.2 Create : AddRange
         public override async Task AddRangeAsync<Entity>(IEnumerable<Entity> entities)
         {
             var indexName = GetIndex<Entity>();
@@ -215,7 +216,6 @@ namespace Vitorm.ElasticSearch
             }
         }
         #endregion
-
 
 
 
@@ -272,6 +272,7 @@ namespace Vitorm.ElasticSearch
             public Entity _source { get; set; }
         }
         #endregion
+
 
 
         #region #3 Update: Update UpdateRange
@@ -402,6 +403,7 @@ namespace Vitorm.ElasticSearch
             if (string.IsNullOrWhiteSpace(_id)) throw new ArgumentNullException("_id");
 
             var actionUrl = $"{serverAddress}/{indexName}/_doc/" + _id;
+            if (refresh != null) actionUrl += "?refresh=" + refresh;
 
             using var httpResponse = await SendHttpRequestAsync(actionUrl, HttpMethod.Delete);
 
@@ -441,6 +443,7 @@ namespace Vitorm.ElasticSearch
                 payload.AppendLine($"{{\"delete\":{{\"_index\":\"{indexName}\",\"_id\":\"{_id}\"}}}}");
             }
             var actionUrl = $"{serverAddress}/{indexName}/_bulk";
+            if (refresh != null) actionUrl += "?refresh=" + refresh;
 
             using var httpResponse = await SendHttpRequestAsync(actionUrl, HttpMethod.Post, payload.ToString());
 
@@ -460,6 +463,36 @@ namespace Vitorm.ElasticSearch
 
 
 
+        #endregion
+
+
+
+        #region #6 Refresh
+        /// <summary>
+        /// explicitly make all operations performed on one or more indices since the last refresh available for search
+        /// ref ： https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-refresh.html
+        /// </summary>
+        /// <typeparam name="Entity"></typeparam>
+        /// <returns></returns>
+        public virtual async Task RefreshAsync<Entity>()
+        {
+            var indexName = GetIndex<Entity>();
+            await RefreshAsync(indexName);
+        }
+        /// <summary>
+        /// explicitly make all operations performed on one or more indices since the last refresh available for search
+        /// ref ： https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-refresh.html
+        /// </summary>
+        /// <param name="indexName"></param>
+        /// <returns></returns>
+        public virtual async Task RefreshAsync(string indexName)
+        {
+            string actionUrl = $"{serverAddress}/{indexName}/_refresh";
+            using HttpResponseMessage response = await SendHttpRequestAsync(actionUrl, HttpMethod.Post);
+
+            var strResponse = await response.Content.ReadAsStringAsync();
+            response.EnsureSuccessStatusCode();
+        }
         #endregion
 
     }
