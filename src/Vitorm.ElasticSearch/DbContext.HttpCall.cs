@@ -13,6 +13,12 @@ namespace Vitorm.ElasticSearch
 {
     public partial class DbContext : Vitorm.DbContext
     {
+        /// <summary>
+        /// control when changes made by this request are made visible to search. allowed values: "true" (default), "wait_for" , "false" .
+        /// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs-refresh.html
+        /// </summary>
+        public virtual string refresh { get; set; } = "true";
+
         static void ThrowException(params string[] messages)
         {
             Exception ex = null;
@@ -34,7 +40,7 @@ namespace Vitorm.ElasticSearch
         }
 
 
-        protected virtual async Task<HttpResponseMessage> SendHttpRequestAsync(string url, HttpMethod httpMethod, object payload = null)
+        public virtual async Task<HttpResponseMessage> SendHttpRequestAsync(string url, HttpMethod httpMethod, object payload = null)
         {
             this.Event_OnExecuting(executeString: url, param: payload);
 
@@ -55,6 +61,8 @@ namespace Vitorm.ElasticSearch
             var _id = GetDocumentId(entityDescriptor, entity);
 
             string actionUrl = $"{serverAddress}/{indexName}/{action}/{_id}";
+
+            if (refresh != null) actionUrl += "?refresh=" + refresh;
 
             using HttpResponseMessage response = await SendHttpRequestAsync(actionUrl, httpMethod ?? HttpMethod.Post, entity);
 
@@ -185,6 +193,7 @@ namespace Vitorm.ElasticSearch
                 }
             }
             var actionUrl = $"{serverAddress}/{indexName}/_bulk";
+            if (refresh != null) actionUrl += "?refresh=" + refresh;
 
             using var httpResponse = await SendHttpRequestAsync(actionUrl, HttpMethod.Post, payload.ToString());
 

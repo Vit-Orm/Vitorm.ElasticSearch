@@ -1,8 +1,8 @@
 <Project>
     <PropertyGroup>
-        <Version>2.2.0</Version>
-        <Vitorm_Version>[2.2.0, 2.3.0)</Vitorm_Version>
-        <VitLinq_Version>[3.1.3, 3.2.0)</VitLinq_Version>
+        <Version>2.2.1</Version>
+        <Vitorm_Version>[2.2.1, 2.3.0)</Vitorm_Version>
+        <VitLinq_Version>[3.1.4, 3.2.0)</VitLinq_Version>
     </PropertyGroup>
 
     <PropertyGroup>

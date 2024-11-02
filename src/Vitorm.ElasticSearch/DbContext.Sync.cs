@@ -112,7 +112,7 @@ namespace Vitorm.ElasticSearch
         #endregion
 
 
-        #region # Save SaveRange
+        #region #4 Save SaveRange
         public virtual int Save<Entity>(Entity entity)
         {
             var indexName = GetIndex<Entity>();
@@ -137,7 +137,7 @@ namespace Vitorm.ElasticSearch
         #endregion
 
 
-        #region #4 Delete : Delete DeleteRange DeleteByKey DeleteByKeys
+        #region #5 Delete : Delete DeleteRange DeleteByKey DeleteByKeys
         public override int Delete<Entity>(Entity entity)
         {
             var indexName = GetIndex<Entity>();
@@ -193,6 +193,30 @@ namespace Vitorm.ElasticSearch
             return DeleteByKeysAsync<Entity, Key>(keys, indexName).Result;
         }
 
+        #endregion
+
+
+        #region #6 Refresh
+        /// <summary>
+        /// explicitly make all operations performed on one or more indices since the last refresh available for search
+        /// ref ： https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-refresh.html
+        /// </summary>
+        /// <typeparam name="Entity"></typeparam>
+        /// <returns></returns>
+        public virtual void Refresh<Entity>()
+        {
+            RefreshAsync<Entity>().Wait();
+        }
+        /// <summary>
+        /// explicitly make all operations performed on one or more indices since the last refresh available for search
+        /// ref ： https://www.elastic.co/guide/en/elasticsearch/reference/current/indices-refresh.html
+        /// </summary>
+        /// <param name="indexName"></param>
+        /// <returns></returns>
+        public virtual void Refresh(string indexName)
+        {
+            RefreshAsync(indexName).Wait();
+        }
         #endregion
     }
 }
