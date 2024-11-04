@@ -199,7 +199,6 @@ namespace Vitorm.MsTest.CommonTest
         public void Test_String()
         {
             using var dbContext = DataSource.CreateDbContextForWriting();
-            var userQuery = dbContext.Query<User>();
             var users = new List<User> {
                 User.NewUser(id: 7, forAdd: true),
                 User.NewUser(id: 8, forAdd: true),
@@ -209,6 +208,8 @@ namespace Vitorm.MsTest.CommonTest
             dbContext.AddRange(users);
             DataSource.WaitForUpdate();
 
+
+            var userQuery = dbContext.Query<User>();
 
             // #1 Contains
             {
