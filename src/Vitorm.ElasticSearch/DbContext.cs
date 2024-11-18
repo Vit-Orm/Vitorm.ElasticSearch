@@ -101,7 +101,7 @@ namespace Vitorm.ElasticSearch
             {
                 keyValue = key.GetValue(entity);
 
-                if (keyValue is null || keyValue.Equals(TypeUtil.DefaultValue(key.type)))
+                if (keyValue is null || keyValue.Equals(TypeUtil.GetDefaultValue(key.type)))
                     return null;
             }
             return keyValue?.ToString();
