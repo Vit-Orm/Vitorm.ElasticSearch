@@ -30,8 +30,8 @@ namespace Vitorm.ElasticSearch.QueryExecutor
             var dbContext = execArg.dbContext;
 
             var searchArg = new SearchExecutorArgument<Result> { combinedStream = execArg.combinedStream, dbContext = dbContext, indexName = execArg.indexName };
-            searchArg.needList = true;
-            searchArg.needTotalCount = true;
+            searchArg.getList = true;
+            searchArg.getTotalCount = true;
 
 
             await dbContext.ExecuteSearchAsync<Entity, Result>(searchArg);

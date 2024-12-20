@@ -10,8 +10,8 @@ namespace Vitorm.ElasticSearch.QueryExecutor
         public Vitorm.ElasticSearch.DbContext dbContext;
         public string indexName;
 
-        public bool needList;
-        public bool needTotalCount;
+        public bool getList;
+        public bool getTotalCount;
 
 
         public IEnumerable<ResultEntity> list;

@@ -147,7 +147,7 @@ namespace Vitorm.ElasticSearch.QueryBuilder
         public virtual string GetField(FilterRuleConvertArgument arg, IFilterRule filter, out Type fieldType)
         {
             var field = GetField(arg, filter);
-            fieldType = GetFieldType(arg, field);
+            fieldType = GetFieldType(arg, filter?.field);
             return field;
         }
         public virtual Type GetFieldType(FilterRuleConvertArgument arg, string field) => LinqHelp.GetNestedMemberType(arg.entityType, field);

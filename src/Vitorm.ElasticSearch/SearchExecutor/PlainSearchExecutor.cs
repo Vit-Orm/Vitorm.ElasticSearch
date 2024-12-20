@@ -28,8 +28,8 @@ namespace Vitorm.ElasticSearch.SearchExecutor
             var searchResult = await dbContext.ExecuteSearchAsync<QueryResponse<Entity>>(queryPayload, indexName: arg.indexName);
 
 
-            #region convert list
-            if (arg.needList)
+            #region getList
+            if (arg.getList)
             {
                 var entityDescriptor = dbContext.GetEntityDescriptor(typeof(Entity));
                 var entities = searchResult?.hits?.hits?.Select(hit => hit.GetSource(dbContext, entityDescriptor));

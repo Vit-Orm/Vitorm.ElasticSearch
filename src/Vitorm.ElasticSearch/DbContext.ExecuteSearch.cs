@@ -27,8 +27,6 @@ namespace Vitorm.ElasticSearch
         #region SearchExecutor
         public static List<ISearchExecutor> defaultSearchExecutor = new() { new PlainSearchExecutor(), new GroupExecutor() };
         public List<ISearchExecutor> searchExecutor = defaultSearchExecutor;
-        #endregion
-
 
         public virtual async Task<bool> ExecuteSearchAsync<Entity, ResultEntity>(SearchExecutorArgument<ResultEntity> arg)
         {
@@ -40,7 +38,7 @@ namespace Vitorm.ElasticSearch
             throw new NotSupportedException("not supported Search");
         }
 
-
+        #endregion
 
 
         public virtual async Task<(IEnumerable<Entity> entities, int? totalCount)> QueryAsync<Entity>(object queryPayload, string indexName)

@@ -26,8 +26,8 @@ namespace Vitorm.ElasticSearch.QueryExecutor
             var dbContext = execArg.dbContext;
 
             var searchArg = new SearchExecutorArgument<object> { combinedStream = execArg.combinedStream, dbContext = dbContext, indexName = execArg.indexName };
-            searchArg.needList = false;
-            searchArg.needTotalCount = true;
+            searchArg.getList = false;
+            searchArg.getTotalCount = true;
 
 
             var queryArg = (combinedStream.orders, combinedStream.skip, combinedStream.take, combinedStream.method);
