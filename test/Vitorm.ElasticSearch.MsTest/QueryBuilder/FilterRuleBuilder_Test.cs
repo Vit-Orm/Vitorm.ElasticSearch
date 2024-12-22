@@ -77,7 +77,7 @@ namespace Vitorm.MsTest.QueryBuilder
                 Assert.AreEqual(1, result.totalCount);
             }
             {
-                var strQuery = "{ 'filter':{'field':'name',  'operator': 'In',  'value': ['u146'] },  'orders':[{'field':'id','asc':false}],  'page':{'pageSize':2, 'pageIndex':1}  }".Replace("'", "\"");
+                var strQuery = "{ 'filter':{'field':'userName',  'operator': 'In',  'value': ['u146'] },  'orders':[{'field':'userId','asc':false}],  'page':{'pageSize':2, 'pageIndex':1}  }".Replace("'", "\"");
                 var query = Json.Deserialize<PagedQuery>(strQuery);
                 query.filter.value = new[] { "u146" };
 

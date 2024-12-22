@@ -3,8 +3,6 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
-using Vit.Core.Module.Serialization;
-
 namespace Vitorm.ElasticSearch
 {
     public partial class DbContext : Vitorm.DbContext
@@ -24,7 +22,7 @@ namespace Vitorm.ElasticSearch
         public JsonSerializerSettings serializeSetting { get; set; } = defaultSerializeSetting;
         public virtual Model Deserialize<Model>(string jsonString)
         {
-            return Json.Deserialize<Model>(jsonString);
+            return JsonConvert.DeserializeObject<Model>(jsonString, serializeSetting);
         }
 
 
