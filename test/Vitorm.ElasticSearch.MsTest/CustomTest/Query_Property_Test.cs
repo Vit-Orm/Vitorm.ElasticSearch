@@ -11,7 +11,6 @@ namespace Vitorm.MsTest.CustomTest
     public class Query_Property_Test
     {
 
-
         [TestMethod]
         public void Test_Property()
         {
@@ -33,14 +32,12 @@ namespace Vitorm.MsTest.CustomTest
                 Assert.AreEqual(2, userList[0].id);
             }
             {
-                var query = userQuery.Where(user => user.Property<int>("father.id") == 5);
+                var query = userQuery.Where(user => user.Property<int>("userFather.userId") == 5);
                 var strQuery = query.ToExecuteString();
                 var userList = query.ToList();
                 Assert.AreEqual(1, userList.Count);
                 Assert.AreEqual(3, userList[0].id);
             }
-
-
 
         }
 

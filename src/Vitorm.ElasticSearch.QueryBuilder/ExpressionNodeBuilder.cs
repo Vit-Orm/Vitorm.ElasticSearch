@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 
 using Vit.Linq.ExpressionNodes.ComponentModel;
+
+using Vitorm.ElasticSearch.QueryBuilder.Extensions;
 
 using Convertor = System.Func<Vitorm.ElasticSearch.QueryBuilder.ExpressionNodeConvertArgument, Vit.Linq.ExpressionNodes.ComponentModel.ExpressionNode, (bool success, object query)>;
 
@@ -333,10 +334,10 @@ namespace Vitorm.ElasticSearch.QueryBuilder
                         }
                     case nameof(Object_Extensions_Property.Property):
                         {
-                            ExpressionNode child = methodCall.arguments[0];
+                            ExpressionNode parentProperty = methodCall.arguments[0];
                             ExpressionNode_Constant path = methodCall.arguments[1];
                             var propertyPath = path.value as string;
-                            var field = GetNodeField(arg, child);
+                            var field = GetNodeField(arg, parentProperty);
                             if (string.IsNullOrEmpty(field)) return propertyPath;
                             return $"{field}.{propertyPath}";
                         }
@@ -367,26 +368,13 @@ namespace Vitorm.ElasticSearch.QueryBuilder
             }
 
             var memberName = node?.memberName;
-            #region Get column defination
+
+            // try get column name from Attribute 
             if (memberName != null && parentType != null)
             {
-                var field = parentType.GetField(memberName);
-                if (field != null)
-                {
-                    var name = (field.GetCustomAttributes(typeof(ColumnAttribute), true)?.FirstOrDefault() as ColumnAttribute)?.Name;
-                    if (name != null) memberName = name;
-                }
-                else
-                {
-                    var property = parentType.GetProperty(memberName);
-                    if (property != null)
-                    {
-                        var name = (property.GetCustomAttributes(typeof(ColumnAttribute), true)?.FirstOrDefault() as ColumnAttribute)?.Name;
-                        if (name != null) memberName = name;
-                    }
-                }
+                memberName = Type_Extensions.GetColumn(parentType, memberName, out _);
             }
-            #endregion
+
 
             if (parent == null)
                 return memberName;

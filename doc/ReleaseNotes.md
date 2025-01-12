@@ -1,5 +1,10 @@
 ﻿# Vitorm.ElasticSearch ReleaseNotes
 
+-----------------------
+# 2.4.0
+- Serialize/Deserialize will use server side column name not property name
+- upgrade to net8.0
+
 
 -----------------------
 # 2.2.1

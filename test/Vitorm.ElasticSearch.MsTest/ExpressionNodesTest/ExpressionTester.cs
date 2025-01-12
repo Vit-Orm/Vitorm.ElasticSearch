@@ -7,10 +7,8 @@ using Vit.Linq;
 
 namespace Vit.Linq.ExpressionNodes.ExpressionNodesTest
 {
-
     public abstract partial class ExpressionTester
     {
-
         public static List<User> Test(IQueryable<User> query, Expression<Func<User, bool>> predicate)
         {
             var expected = GetSourceData().AsQueryable().Where(predicate).ToList();
@@ -33,11 +31,9 @@ namespace Vit.Linq.ExpressionNodes.ExpressionNodesTest
         }
 
 
-
         public static void TestQueryable(IQueryable<User> query)
         {
             Expression<Func<User, bool>> predicate;
-            var canCalculate = false;
 
             #region #0 Add, An addition operation, such as a + b, without overflow checking, for numeric operands.
             if (canCalculate)

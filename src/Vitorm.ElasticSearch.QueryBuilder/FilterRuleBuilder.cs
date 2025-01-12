@@ -6,6 +6,8 @@ using Vit.Linq;
 using Vit.Linq.ComponentModel;
 using Vit.Linq.FilterRules.ComponentModel;
 
+using Vitorm.ElasticSearch.QueryBuilder.Extensions;
+
 using Convertor = System.Func<Vitorm.ElasticSearch.QueryBuilder.FilterRuleConvertArgument, Vit.Linq.FilterRules.ComponentModel.IFilterRule, string, object>;
 
 namespace Vitorm.ElasticSearch.QueryBuilder
@@ -80,14 +82,26 @@ namespace Vitorm.ElasticSearch.QueryBuilder
             }
 
             return orders.Select(order =>
-            {
-                var field = order.field;
-                var fieldType = GetFieldType(arg, field);
-                if (fieldType == typeof(string) && !field.EndsWith(".keyword"))
-                    field += ".keyword";
+                {
+                    var entityType = arg.entityType;
+                    var field = order.field;
+                    Type fieldType;
+                    var fieldPath = GetNestedField(entityType, field, out fieldType);
+                    if (fieldPath == null && field.EndsWith(".keyword"))
+                    {
+                        fieldPath = GetNestedField(entityType, field.Substring(0, field.Length - ".keyword".Length), out fieldType);
+                        if (fieldPath != null)
+                        {
+                            fieldPath += ".keyword";
+                        }
+                    }
 
-                return new Dictionary<string, object> { [field] = new { order = order.asc ? "asc" : "desc" } };
-            })
+                    if (fieldPath == null) fieldPath = field;
+                    else if (fieldType == typeof(string) && !fieldPath.EndsWith(".keyword"))
+                        fieldPath += ".keyword";
+
+                    return new Dictionary<string, object> { [fieldPath] = new { order = order.asc ? "asc" : "desc" } };
+                })
                 .ToList();
         }
 
@@ -143,14 +157,13 @@ namespace Vitorm.ElasticSearch.QueryBuilder
 
             return filter.condition;
         }
-        public virtual string GetField(FilterRuleConvertArgument arg, IFilterRule filter) => filter?.field;
+        public virtual string GetField(FilterRuleConvertArgument arg, IFilterRule filter) => GetField(arg, filter, out _);
         public virtual string GetField(FilterRuleConvertArgument arg, IFilterRule filter, out Type fieldType)
         {
-            var field = GetField(arg, filter);
-            fieldType = GetFieldType(arg, field);
-            return field;
+            return GetNestedField(arg.entityType, filter.field, out fieldType) ?? filter.field;
         }
-        public virtual Type GetFieldType(FilterRuleConvertArgument arg, string field) => LinqHelp.GetNestedMemberType(arg.entityType, field);
+
+        public virtual string GetNestedField(Type type, string fieldPath, out Type fieldType) => Type_Extensions.GetNestedColumn(type, fieldPath, out fieldType);
 
         public virtual object GetValue(FilterRuleConvertArgument arg, IFilterRule filter) => filter?.value;
 

@@ -12,18 +12,29 @@ namespace Vitorm.MsTest
         [Newtonsoft.Json.JsonIgnore]
         public string key { get; set; }
 
+        [System.ComponentModel.DataAnnotations.Schema.Column("userId")]
         public int id { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Schema.Column("userName")]
         public string name { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Schema.Column("userBirth")]
         public DateTime? birth { get; set; }
 
         [Column(TypeName = "{ \"type\":\"date\", \"format\":\"yyyy-MM-dd HH:mm:ss\" }")]
         public string strBirth { get; set; }
 
+        [System.ComponentModel.DataAnnotations.Schema.Column("userFatherId")]
         public int? fatherId { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Schema.Column("userMotherId")]
         public int? motherId { get; set; }
 
 
+        [System.ComponentModel.DataAnnotations.Schema.Column("userFather")]
         public User father { get; set; }
+
+        [System.ComponentModel.DataAnnotations.Schema.Column("userMother")]
         public User mother { get; set; }
 
         public List<User> children { get; set; }

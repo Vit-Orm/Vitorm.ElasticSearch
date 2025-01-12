@@ -47,6 +47,12 @@ namespace Vitorm.ElasticSearch
             }
             return parameter;
         }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="parameter"></param>
+        /// <param name="propertyOrFieldName"></param>
+        /// <returns></returns>
         public static Expression GetFieldExpression_ByName(Expression parameter, string propertyOrFieldName)
         {
             var valueType = parameter.Type;

@@ -62,7 +62,7 @@ namespace Vitorm.ElasticSearch.SearchExecutor
                 var searchResult = await dbContext.ExecuteSearchAsync<AggregationResult<Entity, WrapKey<Key>>>(queryPayload, indexName: arg.indexName);
 
                 // convert list
-                if (arg.needList)
+                if (arg.getList)
                 {
                     var lambdaExpression = combinedStream.select.resultSelector.Lambda_GetLambdaExpression();
                     var delSelect = (Func<IGrouping<Key, Entity>, ResultEntity>)lambdaExpression.Compile();
@@ -80,7 +80,7 @@ namespace Vitorm.ElasticSearch.SearchExecutor
                 var searchResult = await dbContext.ExecuteSearchAsync<AggregationResult<Entity, Key>>(queryPayload, indexName: arg.indexName);
 
                 // convert list
-                if (arg.needList)
+                if (arg.getList)
                 {
                     var lambdaExpression = combinedStream.select.resultSelector.Lambda_GetLambdaExpression();
                     var delSelect = (Func<IGrouping<Key, Entity>, ResultEntity>)lambdaExpression.Compile();
