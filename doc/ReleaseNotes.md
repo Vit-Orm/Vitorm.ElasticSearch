@@ -3,7 +3,7 @@
 -----------------------
 # 2.4.0
 - Serialize/Deserialize will use server side column name not property name
-- upgrade to net8
+- upgrade to net8.0
 
 
 -----------------------
